@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Base de données PostgreSQL avec PostGIS
+  database:
+    image: postgis/postgis:15-3.3
+    container_name: urban_forest_db
+    environment:
+      POSTGRES_DB: urban_forest
+      POSTGRES_USER: symfony_user
+      POSTGRES_PASSWORD: symfony_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - urban_forest_network
+    restart: unless-stopped
+
+  # Application Symfony
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: urban_forest_app
+    depends_on:
+      - database
+    environment:
+      DATABASE_URL: "postgresql://symfony_user:symfony_password@database:5432/urban_forest"
+      APP_ENV: dev
+      APP_DEBUG: 1
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/var/www/html
+      - ./var:/var/www/html/var
+    networks:
+      - urban_forest_network
+    restart: unless-stopped
+    command: ["symfony", "server:start", "--port=8000", "--allow-all-ip", "--no-tls"]
+
+  # Service pour l'administration de la base (optionnel)
+  adminer:
+    image: adminer:latest
+    container_name: urban_forest_adminer
+    depends_on:
+      - database
+    ports:
+      - "8080:8080"
+    networks:
+      - urban_forest_network
+    restart: unless-stopped
+
+# Volumes pour la persistance des données
+volumes:
+  postgres_data:
+
+# Réseau privé pour les communications inter-conteneurs
+networks:
+  urban_forest_network:
+    driver: bridge
