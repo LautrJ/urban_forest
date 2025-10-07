@@ -1,0 +1,228 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouvelle demande de recensement{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        .form-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .form-header {
+            margin-bottom: 2rem;
+            border-bottom: 3px solid var(--forest-light);
+            padding-bottom: 1rem;
+        }
+
+        .form-header h1 {
+            color: var(--forest-dark);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .form-header p {
+            color: #666;
+            margin: 0;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--forest-dark);
+        }
+
+        .form-control, .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--forest-light);
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .form-check {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-check input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .btn-submit {
+            background-color: var(--forest-medium);
+            color: white;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+        }
+
+        .btn-submit:hover {
+            background-color: var(--forest-dark);
+        }
+
+        .btn-submit:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .location-info {
+            background-color: #e8f5e9;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--forest-light);
+        }
+
+        .location-info.loading {
+            background-color: #fff3cd;
+            border-left-color: #ffc107;
+        }
+
+        .location-info.error {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        .help-text {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="form-container">
+        <div class="form-header">
+            <h1>Nouvelle demande de recensement</h1>
+            <p>Faites recenser un arbre de votre propriété dans le patrimoine arboré de votre commune</p>
+        </div>
+
+        <div id="location-status" class="location-info loading">
+            <strong>📍 Récupération de votre position...</strong>
+            <p class="help-text">Veuillez autoriser l'accès à votre localisation pour continuer</p>
+        </div>
+
+        {{ form_start(form, {'attr': {'id': 'tree-request-form'}}) }}
+
+        <div class="form-group">
+            {{ form_label(form.proposedTreeType) }}
+            {{ form_widget(form.proposedTreeType, {'attr': {'class': 'form-select'}}) }}
+            <div class="help-text">Si vous ne connaissez pas l'essence, laissez ce champ vide. Un agent l'identifiera.</div>
+            {{ form_errors(form.proposedTreeType) }}
+        </div>
+
+        <div class="form-group">
+            {{ form_label(form.estimatedAge) }}
+            {{ form_widget(form.estimatedAge, {'attr': {'class': 'form-control'}}) }}
+            <div class="help-text">Estimation approximative, ce n'est pas grave si vous ne savez pas</div>
+            {{ form_errors(form.estimatedAge) }}
+        </div>
+
+        <div class="form-group">
+            {{ form_label(form.description) }}
+            {{ form_widget(form.description, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.description) }}
+        </div>
+
+        <div class="form-group">
+            <div class="form-check">
+                {{ form_widget(form.needsAppointment) }}
+                {{ form_label(form.needsAppointment) }}
+            </div>
+            {{ form_errors(form.needsAppointment) }}
+        </div>
+
+        {# Champs cachés pour les coordonnées GPS #}
+        {{ form_widget(form.latitude) }}
+        {{ form_widget(form.longitude) }}
+
+        <button type="submit" class="btn-submit" id="submit-btn" disabled>
+            Envoyer la demande
+        </button>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const locationStatus = document.getElementById('location-status');
+            const submitBtn = document.getElementById('submit-btn');
+            const latitudeInput = document.getElementById('tree_request_latitude');
+            const longitudeInput = document.getElementById('tree_request_longitude');
+
+            // Vérifier si la géolocalisation est supportée
+            if (!navigator.geolocation) {
+                locationStatus.className = 'location-info error';
+                locationStatus.innerHTML = '<strong>❌ Géolocalisation non supportée</strong><p class="help-text">Votre navigateur ne supporte pas la géolocalisation</p>';
+                return;
+            }
+
+            // Récupérer la position de l'utilisateur
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    // Succès
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    latitudeInput.value = lat;
+                    longitudeInput.value = lng;
+
+                    locationStatus.className = 'location-info';
+                    locationStatus.innerHTML = '<strong>✅ Position obtenue avec succès</strong><p class="help-text">Coordonnées : ' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '</p>';
+
+                    submitBtn.disabled = false;
+                },
+                function(error) {
+                    // Erreur
+                    let errorMessage = '';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = 'Vous avez refusé l\'accès à votre position';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = 'Position non disponible';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = 'La demande a expiré';
+                            break;
+                        default:
+                            errorMessage = 'Erreur inconnue';
+                    }
+
+                    locationStatus.className = 'location-info error';
+                    locationStatus.innerHTML = '<strong>❌ Impossible d\'obtenir votre position</strong><p class="help-text">' + errorMessage + '. Veuillez autoriser l\'accès à votre localisation.</p>';
+                }
+            );
+        });
+    </script>
+{% endblock %}

@@ -128,10 +128,15 @@
 <nav class="navbar">
     <div class="navbar-container">
         <a href="{{ path('app_home') }}" class="navbar-brand">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2 L7 10 H17 L12 2 Z" />
-                <path d="M12 7 L5 14 H19 L12 7 Z" />
-                <path d="M12 14 V20" />
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <!-- Tronc -->
+                <rect x="10" y="16" width="4" height="6"/>
+                <!-- Triangle du haut -->
+                <path d="M12 2 L7 10 H17 Z"/>
+                <!-- Triangle du milieu -->
+                <path d="M12 8 L6 14 H18 Z"/>
+                <!-- Triangle du bas -->
+                <path d="M12 12 L5 18 H19 Z"/>
             </svg>
 
 
@@ -143,14 +148,14 @@
             <li><a href="{{ path('app_home') }}" class="nav-link">Accueil</a></li>
 
             {% if is_granted('IS_AUTHENTICATED_FULLY') %}
-                <li><a href="#" class="nav-link">Carte</a></li>
+                <li><a href="{{ path('app_map') }}" class="nav-link">Carte</a></li>
 
                 {% if is_granted('ROLE_USER') %}
-                    <li><a href="#" class="nav-link">Mes demandes</a></li>
+                    <li><a href="{{ path('app_request_list') }}" class="nav-link">Mes demandes</a></li>
                 {% endif %}
 
                 {% if is_granted('ROLE_AGENT') %}
-                    <li><a href="#" class="nav-link">Administration</a></li>
+                    <li><a href="{{ path('app_admin_dashboard') }}" class="nav-link">Administration</a></li>
                 {% endif %}
 
                 <li>

@@ -1,0 +1,211 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mes demandes de recensement{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid var(--forest-light);
+        }
+
+        .page-header h1 {
+            color: var(--forest-dark);
+            margin: 0;
+        }
+
+        .btn-new-request {
+            background-color: var(--forest-medium);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        .btn-new-request:hover {
+            background-color: var(--forest-dark);
+        }
+
+        .requests-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .request-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--forest-light);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .request-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .request-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-en_attente {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-validee {
+            background-color: #d1f2eb;
+            color: var(--forest-dark);
+        }
+
+        .status-refusee {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .request-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: var(--forest-dark);
+        }
+
+        .no-requests {
+            text-align: center;
+            padding: 3rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .no-requests svg {
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .no-requests h2 {
+            color: var(--forest-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .no-requests p {
+            color: #666;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="page-header">
+        <h1>Mes demandes de recensement</h1>
+        <a href="{{ path('app_request_new') }}" class="btn-new-request">+ Nouvelle demande</a>
+    </div>
+
+    {% if requests is empty %}
+        <div class="no-requests">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor" color="var(--forest-light)">
+                <rect x="10" y="16" width="4" height="6"/>
+                <path d="M12 2 L7 10 H17 Z"/>
+                <path d="M12 8 L6 14 H18 Z"/>
+                <path d="M12 12 L5 18 H19 Z"/>
+            </svg>
+            <h2>Aucune demande pour le moment</h2>
+            <p>Vous n'avez pas encore soumis de demande de recensement d'arbre.</p>
+            <a href="{{ path('app_request_new') }}" class="btn-new-request">Créer ma première demande</a>
+        </div>
+    {% else %}
+        <div class="requests-grid">
+            {% for request in requests %}
+                <div class="request-card">
+                    <div class="request-header">
+                        <div>
+                            <h3 style="margin: 0 0 0.5rem 0; color: var(--forest-dark);">
+                                {% if request.proposedTreeType %}
+                                    {{ request.proposedTreeType.commonName }}
+                                {% else %}
+                                    Essence à identifier
+                                {% endif %}
+                            </h3>
+                            <span style="color: #666; font-size: 0.9rem;">
+                            Demandé le {{ request.createdAt|date('d/m/Y à H:i') }}
+                        </span>
+                        </div>
+                        <span class="request-status status-{{ request.status }}">
+                        {% if request.status == 'en_attente' %}
+                            En attente
+                        {% elseif request.status == 'validee' %}
+                            Validée
+                        {% elseif request.status == 'refusee' %}
+                            Refusée
+                        {% endif %}
+                    </span>
+                    </div>
+
+                    {% if request.description %}
+                        <p style="color: #666; margin: 1rem 0;">{{ request.description }}</p>
+                    {% endif %}
+
+                    <div class="request-info">
+                        {% if request.estimatedAge %}
+                            <div class="info-item">
+                                <span class="info-label">Âge estimé</span>
+                                <span class="info-value">{{ request.estimatedAge }} ans</span>
+                            </div>
+                        {% endif %}
+
+                        <div class="info-item">
+                            <span class="info-label">Coordonnées GPS</span>
+                            <span class="info-value">{{ request.latitude|number_format(6) }}, {{ request.longitude|number_format(6) }}</span>
+                        </div>
+
+                        <div class="info-item">
+                            <span class="info-label">Rendez-vous</span>
+                            <span class="info-value">
+                            {% if request.needsAppointment %}
+                                ✅ Demandé
+                            {% else %}
+                                ❌ Non nécessaire
+                            {% endif %}
+                        </span>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endblock %}

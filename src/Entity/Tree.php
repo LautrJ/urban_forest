@@ -26,7 +26,7 @@ class Tree
     private ?int $age = null;
 
     #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
-    private ?\DateTime $plantationDate = null;
+    private ?\DateTimeImmutable $plantationDate = null;
 
     #[ORM\Column(nullable: true)]
     private ?float $height = null;
@@ -103,12 +103,12 @@ class Tree
         return $this;
     }
 
-    public function getPlantationDate(): ?\DateTime
+    public function getPlantationDate(): ?\DateTimeImmutable
     {
         return $this->plantationDate;
     }
 
-    public function setPlantationDate(?\DateTime $plantationDate): static
+    public function setPlantationDate(?\DateTimeImmutable $plantationDate): static
     {
         $this->plantationDate = $plantationDate;
 
@@ -175,24 +175,24 @@ class Tree
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTime
+    public function getCreatedAt(): ?\DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTime $createdAt): static
+    public function setCreatedAt(\DateTimeImmutable $createdAt): static
     {
         $this->createdAt = $createdAt;
 
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTime
+    public function getUpdatedAt(): ?\DateTimeImmutable
     {
         return $this->updatedAt;
     }
 
-    public function setUpdatedAt(\DateTime $updatedAt): static
+    public function setUpdatedAt(\DateTimeImmutable $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
 

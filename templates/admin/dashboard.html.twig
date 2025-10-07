@@ -1,0 +1,381 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard Administration{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        .dashboard-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid var(--forest-light);
+        }
+
+        .dashboard-header h1 {
+            color: var(--forest-dark);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .dashboard-header p {
+            color: #666;
+            margin: 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--forest-dark);
+            margin: 0.5rem 0;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-header h2 {
+            color: var(--forest-dark);
+            margin: 0;
+        }
+
+        .requests-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: var(--forest-medium);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-success {
+            background-color: #d1f2eb;
+            color: var(--forest-dark);
+        }
+
+        .btn-action {
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-block;
+        }
+
+        .btn-view {
+            background-color: var(--forest-light);
+            color: white;
+        }
+
+        .btn-view:hover {
+            background-color: var(--forest-medium);
+        }
+
+        .no-requests {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+
+        .no-requests svg {
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .accordion-section {
+            margin-bottom: 1.5rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .accordion-header {
+            width: 100%;
+            background: var(--forest-medium);
+            color: white;
+            border: none;
+            padding: 1.5rem;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+
+        .accordion-header:hover {
+            background: var(--forest-dark);
+        }
+
+        .accordion-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .accordion-title h2 {
+            margin: 0;
+            font-size: 1.3rem;
+        }
+
+        .chevron {
+            font-size: 1rem;
+            transition: transform 0.3s;
+        }
+
+        .chevron.rotated {
+            transform: rotate(-90deg);
+        }
+
+        .accordion-content {
+            max-height: 2000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+        }
+
+        .accordion-content.collapsed {
+            max-height: 0;
+        }
+
+        .accordion-content table {
+            margin: 0;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="dashboard-header">
+        <h1>🛡️ Dashboard Administration</h1>
+        <p>Gestion des demandes de recensement d'arbres</p>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Total demandes</div>
+            <div class="stat-value">{{ stats.total }}</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">En attente</div>
+            <div class="stat-value" style="color: #856404;">{{ stats.pending }}</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Validées</div>
+            <div class="stat-value" style="color: var(--forest-light);">{{ stats.validated }}</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Refusées</div>
+            <div class="stat-value" style="color: #dc3545;">{{ stats.rejected }}</div>
+        </div>
+    </div>
+
+    <div class="accordion-section">
+        <button class="accordion-header" onclick="toggleAccordion('requests')">
+            <div class="accordion-title">
+                <span class="chevron" id="chevron-requests">▼</span>
+                <h2>Demandes citoyens en attente ({{ stats.pending }})</h2>
+            </div>
+        </button>
+
+        <div class="accordion-content" id="content-requests">
+            {% if pendingRequests is empty %}
+                <div class="no-requests">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v6l4 2"/>
+                    </svg>
+                    <p>Aucune demande en attente pour le moment</p>
+                </div>
+            {% else %}
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Citoyen</th>
+                        <th>Essence proposée</th>
+                        <th>Âge estimé</th>
+                        <th>RDV</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for request in pendingRequests %}
+                        <tr>
+                            <td>{{ request.createdAt|date('d/m/Y H:i') }}</td>
+                            <td>
+                                <strong>{{ request.citizen.name }}</strong><br>
+                                <small style="color: #666;">{{ request.citizen.email }}</small>
+                            </td>
+                            <td>
+                                {% if request.proposedTreeType %}
+                                    {{ request.proposedTreeType.commonName }}
+                                {% else %}
+                                    <em style="color: #999;">À identifier</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if request.estimatedAge %}
+                                    {{ request.estimatedAge }} ans
+                                {% else %}
+                                    <em style="color: #999;">Non précisé</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if request.needsAppointment %}
+                                    <span class="badge badge-warning">Demandé</span>
+                                {% else %}
+                                    <span style="color: #999;">Non</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ path('app_admin_request_process', {id: request.id}) }}" class="btn-action btn-view">Traiter</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="accordion-section">
+        <button class="accordion-header" onclick="toggleAccordion('trees')">
+            <div class="accordion-title">
+                <span class="chevron" id="chevron-trees">▶</span>
+                <h2>Arbres recensés ({{ trees|length }})</h2>
+            </div>
+            <a href="#" class="btn-action btn-view" onclick="event.stopPropagation()">+ Ajouter un arbre</a>
+        </button>
+
+        <div class="accordion-content collapsed" id="content-trees">
+            {% if trees is empty %}
+                <div class="no-requests">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor" color="var(--forest-light)">
+                        <rect x="10" y="16" width="4" height="6"/>
+                        <path d="M12 2 L7 10 H17 Z"/>
+                        <path d="M12 8 L6 14 H18 Z"/>
+                        <path d="M12 12 L5 18 H19 Z"/>
+                    </svg>
+                    <p>Aucun arbre recensé pour le moment</p>
+                </div>
+            {% else %}
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Essence</th>
+                        <th>Statut</th>
+                        <th>Âge</th>
+                        <th>Contributeur</th>
+                        <th>Date d'ajout</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for tree in trees %}
+                        <tr>
+                            <td>
+                                <strong>{{ tree.treeType.commonName }}</strong><br>
+                                <small><em>{{ tree.treeType.scientificName }}</em></small>
+                            </td>
+                            <td>
+                                <span class="badge badge-success">{{ tree.status.label }}</span>
+                            </td>
+                            <td>
+                                {% if tree.age %}
+                                    {{ tree.age }} ans
+                                {% else %}
+                                    <em style="color: #999;">Non précisé</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if tree.contributor %}
+                                    {{ tree.contributor.name }}
+                                {% else %}
+                                    <em style="color: #999;">Municipalité</em>
+                                {% endif %}
+                            </td>
+                            <td>{{ tree.createdAt|date('d/m/Y') }}</td>
+                            <td>
+                                <a href="#" class="btn-action btn-view">Voir</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        function toggleAccordion(section) {
+            const content = document.getElementById('content-' + section);
+            const chevron = document.getElementById('chevron-' + section);
+
+            content.classList.toggle('collapsed');
+            chevron.classList.toggle('rotated');
+        }
+    </script>
+{% endblock %}

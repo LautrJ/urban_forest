@@ -1,0 +1,234 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Traiter la demande{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        .process-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            color: var(--forest-medium);
+            text-decoration: none;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .request-details {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .request-header {
+            border-bottom: 2px solid var(--forest-light);
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .request-header h1 {
+            color: var(--forest-dark);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: var(--forest-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .detail-value {
+            color: #666;
+        }
+
+        .map-preview {
+            height: 300px;
+            background: #e9ecef;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            margin-top: 1rem;
+        }
+
+        .actions-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .actions-container h2 {
+            color: var(--forest-dark);
+            margin: 0 0 1.5rem 0;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .btn-validate {
+            background-color: var(--forest-medium);
+            color: white;
+        }
+
+        .btn-validate:hover {
+            background-color: var(--forest-dark);
+        }
+
+        .btn-reject {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-reject:hover {
+            background-color: #c82333;
+        }
+
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 4px;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="process-container">
+        <a href="{{ path('app_admin_dashboard') }}" class="back-link">← Retour au dashboard</a>
+
+        <div class="request-details">
+            <div class="request-header">
+                <h1>Demande de recensement</h1>
+                <p style="color: #666; margin: 0;">
+                    Soumise le {{ treeRequest.createdAt|date('d/m/Y à H:i') }}
+                    par {{ treeRequest.citizen.name }}
+                </p>
+            </div>
+
+            <div class="details-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Citoyen</div>
+                    <div class="detail-value">
+                        <strong>{{ treeRequest.citizen.name }}</strong><br>
+                        {{ treeRequest.citizen.email }}
+                    </div>
+                </div>
+
+                <div class="detail-item">
+                    <div class="detail-label">Essence proposée</div>
+                    <div class="detail-value">
+                        {% if treeRequest.proposedTreeType %}
+                            {{ treeRequest.proposedTreeType.commonName }}<br>
+                            <small><em>{{ treeRequest.proposedTreeType.scientificName }}</em></small>
+                        {% else %}
+                            <em>Non précisée - À identifier par l'agent</em>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="detail-item">
+                    <div class="detail-label">Âge estimé</div>
+                    <div class="detail-value">
+                        {% if treeRequest.estimatedAge %}
+                            {{ treeRequest.estimatedAge }} ans
+                        {% else %}
+                            <em>Non précisé</em>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="detail-item">
+                    <div class="detail-label">Rendez-vous demandé</div>
+                    <div class="detail-value">
+                        {% if treeRequest.needsAppointment %}
+                            ✅ Oui, le citoyen souhaite un RDV
+                        {% else %}
+                            ❌ Non nécessaire
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="detail-item">
+                    <div class="detail-label">Coordonnées GPS</div>
+                    <div class="detail-value">
+                        Latitude: {{ treeRequest.latitude|number_format(6) }}<br>
+                        Longitude: {{ treeRequest.longitude|number_format(6) }}
+                    </div>
+                </div>
+            </div>
+
+            {% if treeRequest.description %}
+                <div class="detail-item">
+                    <div class="detail-label">Description / Commentaires</div>
+                    <div class="detail-value">{{ treeRequest.description }}</div>
+                </div>
+            {% endif %}
+
+            <div class="map-preview">
+                📍 Aperçu carte (à implémenter avec Leaflet)
+            </div>
+        </div>
+
+        <div class="actions-container">
+            <h2>Actions</h2>
+
+            {% if not treeRequest.proposedTreeType %}
+                <div class="warning-box">
+                    ⚠️ <strong>Attention :</strong> Aucune essence n'a été proposée par le citoyen.
+                    Vous devrez identifier l'arbre avant de valider la demande.
+                </div>
+            {% endif %}
+
+            <div class="action-buttons">
+                <form method="post" action="{{ path('app_admin_request_validate', {id: treeRequest.id}) }}" onsubmit="return confirm('Êtes-vous sûr de vouloir valider cette demande et créer l\'arbre ?');">
+                    <button type="submit" class="btn btn-validate" {% if not treeRequest.proposedTreeType %}disabled title="Essence requise"{% endif %}>
+                        ✅ Valider et créer l'arbre
+                    </button>
+                </form>
+
+                <form method="post" action="{{ path('app_admin_request_reject', {id: treeRequest.id}) }}" onsubmit="return confirm('Êtes-vous sûr de vouloir refuser cette demande ?');">
+                    <button type="submit" class="btn btn-reject">
+                        ❌ Refuser la demande
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
