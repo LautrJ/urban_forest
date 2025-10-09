@@ -220,12 +220,173 @@ class Tree
     public function removePhoto(Photo $photo): static
     {
         if ($this->photos->removeElement($photo)) {
-            // set the owning side to null (unless already changed)
             if ($photo->getTree() === $this) {
                 $photo->setTree(null);
             }
         }
 
         return $this;
+    }
+
+    /**
+     * Calcule le stockage carbone actuel de l'arbre en kg CO2/an
+     * Utilise une courbe de croissance logistique simplifiée
+     *
+     * Formule : valeur_actuelle = max × (âge / (âge + K))
+     * où K est l'âge pour atteindre 50% de la capacité maximale
+     *
+     * @return float Stockage carbone en kg CO2/an
+     */
+    public function getCurrentCarbonStorage(): float
+    {
+        if (!$this->treeType || !$this->age || $this->age <= 0) {
+            return 0.0;
+        }
+
+        $max = $this->treeType->getMaxCarbonStorage();
+        $k = $this->treeType->getCarbonGrowthK();
+
+        if ($max === null || $k === null || $k <= 0) {
+            return 0.0;
+        }
+
+        $currentStorage = $max * ($this->age / ($this->age + $k));
+
+        return round($currentStorage, 2);
+    }
+
+    /**
+     * Calcule le rayon actuel de la zone de fraîcheur en mètres
+     * Utilise la même courbe de croissance logistique
+     *
+     * @return float Rayon de la zone de fraîcheur en mètres
+     */
+    public function getCurrentCoolZoneRadius(): float
+    {
+        if (!$this->treeType || !$this->age || $this->age <= 0) {
+            return 0.0;
+        }
+
+        $max = $this->treeType->getMaxCoolZone();
+        $k = $this->treeType->getCoolZoneGrowthK();
+
+        if ($max === null || $k === null || $k <= 0) {
+            return 0.0;
+        }
+
+        $currentRadius = $max * ($this->age / ($this->age + $k));
+
+        return round($currentRadius, 2);
+    }
+
+    /**
+     * Calcule le pourcentage de maturité de l'arbre
+     * Basé sur l'âge de maturité défini dans le TreeType
+     *
+     * @return float Pourcentage de maturité (0-100)
+     */
+    public function getMaturityPercentage(): float
+    {
+        if (!$this->treeType || !$this->age || $this->age <= 0) {
+            return 0.0;
+        }
+
+        $maturityAge = $this->treeType->getMaturityAge();
+
+        if ($maturityAge === null || $maturityAge <= 0) {
+            return 0.0;
+        }
+
+        $percentage = ($this->age / $maturityAge) * 100;
+
+        return min(round($percentage, 1), 100.0);
+    }
+
+    /**
+     * Retourne true si l'arbre a atteint sa maturité
+     *
+     * @return bool
+     */
+    public function isMature(): bool
+    {
+        if (!$this->treeType || !$this->age) {
+            return false;
+        }
+
+        $maturityAge = $this->treeType->getMaturityAge();
+
+        if ($maturityAge === null) {
+            return false;
+        }
+
+        return $this->age >= $maturityAge;
+    }
+
+    /**
+     * Projette la capacité de stockage carbone à un âge futur
+     * Utile pour la frise chronologique prévisionnelle
+     *
+     * @param int $futureAge L'âge futur à projeter
+     * @return float Stockage carbone projeté en kg CO2/an
+     */
+    public function getProjectedCarbonStorage(int $futureAge): float
+    {
+        if (!$this->treeType || $futureAge <= 0) {
+            return 0.0;
+        }
+
+        $max = $this->treeType->getMaxCarbonStorage();
+        $k = $this->treeType->getCarbonGrowthK();
+
+        if ($max === null || $k === null || $k <= 0) {
+            return 0.0;
+        }
+
+        $projectedStorage = $max * ($futureAge / ($futureAge + $k));
+
+        return round($projectedStorage, 2);
+    }
+
+    /**
+     * Projette le rayon de la zone de fraîcheur à un âge futur
+     *
+     * @param int $futureAge L'âge futur à projeter
+     * @return float Rayon projeté en mètres
+     */
+    public function getProjectedCoolZoneRadius(int $futureAge): float
+    {
+        if (!$this->treeType || $futureAge <= 0) {
+            return 0.0;
+        }
+
+        $max = $this->treeType->getMaxCoolZone();
+        $k = $this->treeType->getCoolZoneGrowthK();
+
+        if ($max === null || $k === null || $k <= 0) {
+            return 0.0;
+        }
+
+        $projectedRadius = $max * ($futureAge / ($futureAge + $k));
+
+        return round($projectedRadius, 2);
+    }
+
+    /**
+     * Retourne un tableau avec toutes les données environnementales actuelles
+     * Utile pour afficher dans les popups ou les vues détaillées
+     *
+     * @return array
+     */
+    public function getEnvironmentalData(): array
+    {
+        return [
+            'carbonStorage' => $this->getCurrentCarbonStorage(),
+            'coolZoneRadius' => $this->getCurrentCoolZoneRadius(),
+            'maturityPercentage' => $this->getMaturityPercentage(),
+            'isMature' => $this->isMature(),
+            'age' => $this->age,
+            'allergyPotential' => $this->treeType?->getAllergyPotential(),
+            'resilience' => $this->treeType?->getResilience(),
+        ];
     }
 }

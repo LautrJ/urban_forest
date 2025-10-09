@@ -110,6 +110,7 @@
         }
 
         const treesLayer = L.layerGroup().addTo(map);
+        const coolZonesLayer = L.layerGroup().addTo(map);
         const requestsLayer = L.layerGroup().addTo(map);
 
         const treeIcon = L.divIcon({
@@ -129,13 +130,39 @@
         });
 
         treesData.forEach(tree => {
+            const coolZoneRadius = tree.environmental.coolZoneRadius;
+
+            if (coolZoneRadius > 0) {
+                const circle = L.circle([tree.latitude, tree.longitude], {
+                    color: '#52b788',
+                    fillColor: '#52b788',
+                    fillOpacity: 0.15,
+                    radius: coolZoneRadius,
+                    weight: 2,
+                    opacity: 0.5
+                });
+
+                circle.addTo(coolZonesLayer);
+            }
+
             const marker = L.marker([tree.latitude, tree.longitude], { icon: treeIcon });
 
+            const env = tree.environmental;
             const popupContent = `
                 <div class="popup-header">${tree.treeType.commonName}</div>
                 <div class="popup-detail"><em>${tree.treeType.scientificName}</em></div>
-                ${tree.age ? `<div class="popup-detail">Âge : ${tree.age} ans</div>` : ''}
-                ${tree.contributor ? `<div class="popup-detail">Recensé par : ${tree.contributor.name}</div>` : '<div class="popup-detail">Recensé par : Municipalité</div>'}
+                ${tree.age ? `<div class="popup-detail"><strong>Âge :</strong> ${tree.age} ans${env.isMature ? ' ✓ (mature)' : ''}</div>` : ''}
+
+                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #ddd;">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--forest-dark);">📊 Impact environnemental</div>
+                    <div class="popup-detail">🌱 CO2 capturé : <strong>${env.carbonStorage} kg/an</strong></div>
+                    <div class="popup-detail">❄️ Zone fraîcheur : <strong>${env.coolZoneRadius}m de rayon</strong></div>
+                    ${env.maturityPercentage ? `<div class="popup-detail">📈 Maturité : <strong>${env.maturityPercentage}%</strong></div>` : ''}
+                    ${env.allergyPotential ? `<div class="popup-detail">🤧 Allergie : <strong>${env.allergyPotential}</strong></div>` : ''}
+                    ${env.resilience ? `<div class="popup-detail">💪 Résilience : <strong>${env.resilience}</strong></div>` : ''}
+                </div>
+
+                ${tree.contributor ? `<div class="popup-detail" style="margin-top: 0.5rem;">Recensé par : ${tree.contributor.name}</div>` : '<div class="popup-detail" style="margin-top: 0.5rem;">Recensé par : Municipalité</div>'}
                 <span class="popup-badge badge-validated">${tree.status.label}</span>
             `;
 
@@ -172,6 +199,12 @@
                     map.removeLayer(treesLayer);
                 } else {
                     map.addLayer(treesLayer);
+                }
+            } else if (layerType === 'coolZones') {
+                if (map.hasLayer(coolZonesLayer)) {
+                    map.removeLayer(coolZonesLayer);
+                } else {
+                    map.addLayer(coolZonesLayer);
                 }
             } else if (layerType === 'requests') {
                 if (map.hasLayer(requestsLayer)) {

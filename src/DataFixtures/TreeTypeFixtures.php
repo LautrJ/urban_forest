@@ -14,10 +14,10 @@ class TreeTypeFixtures extends Fixture
             [
                 'scientificName' => 'Quercus robur',
                 'commonName' => 'Chêne pédonculé',
-                'maxCarbonStorage' => 150.0,
-                'carbonGrowthCoefficient' => 0.7,
-                'maxCoolZone' => 80.0,
-                'coolZoneGrowthCoefficient' => 0.65,
+                'maxCarbonStorage' => 150.0,  // kg CO2/an à maturité
+                'carbonGrowthK' => 15,         // À 15 ans, atteint 50% de sa capacité (75 kg/an)
+                'maxCoolZone' => 15.0,         // rayon de 15m à maturité
+                'coolZoneGrowthK' => 12,       // À 12 ans, atteint 50% du rayon (7.5m)
                 'maturityAge' => 30,
                 'allergyPotential' => 'faible',
                 'resilience' => 'élevée'
@@ -26,9 +26,9 @@ class TreeTypeFixtures extends Fixture
                 'scientificName' => 'Tilia cordata',
                 'commonName' => 'Tilleul à petites feuilles',
                 'maxCarbonStorage' => 120.0,
-                'carbonGrowthCoefficient' => 0.65,
-                'maxCoolZone' => 70.0,
-                'coolZoneGrowthCoefficient' => 0.6,
+                'carbonGrowthK' => 12,
+                'maxCoolZone' => 12.0,
+                'coolZoneGrowthK' => 10,
                 'maturityAge' => 25,
                 'allergyPotential' => 'faible',
                 'resilience' => 'moyenne'
@@ -36,10 +36,10 @@ class TreeTypeFixtures extends Fixture
             [
                 'scientificName' => 'Acer platanoides',
                 'commonName' => 'Érable plane',
-                'maxCarbonStorage' => 110.0,
-                'carbonGrowthCoefficient' => 0.68,
-                'maxCoolZone' => 65.0,
-                'coolZoneGrowthCoefficient' => 0.62,
+                'maxCarbonStorage' => 100.0,
+                'carbonGrowthK' => 10,
+                'maxCoolZone' => 10.0,
+                'coolZoneGrowthK' => 8,
                 'maturityAge' => 20,
                 'allergyPotential' => 'moyen',
                 'resilience' => 'élevée'
@@ -48,9 +48,9 @@ class TreeTypeFixtures extends Fixture
                 'scientificName' => 'Platanus × acerifolia',
                 'commonName' => 'Platane commun',
                 'maxCarbonStorage' => 180.0,
-                'carbonGrowthCoefficient' => 0.72,
-                'maxCoolZone' => 90.0,
-                'coolZoneGrowthCoefficient' => 0.7,
+                'carbonGrowthK' => 18,
+                'maxCoolZone' => 18.0,
+                'coolZoneGrowthK' => 15,
                 'maturityAge' => 35,
                 'allergyPotential' => 'moyen',
                 'resilience' => 'élevée'
@@ -59,9 +59,9 @@ class TreeTypeFixtures extends Fixture
                 'scientificName' => 'Aesculus hippocastanum',
                 'commonName' => 'Marronnier commun',
                 'maxCarbonStorage' => 130.0,
-                'carbonGrowthCoefficient' => 0.66,
-                'maxCoolZone' => 75.0,
-                'coolZoneGrowthCoefficient' => 0.64,
+                'carbonGrowthK' => 13,
+                'maxCoolZone' => 13.0,
+                'coolZoneGrowthK' => 11,
                 'maturityAge' => 25,
                 'allergyPotential' => 'faible',
                 'resilience' => 'moyenne'
@@ -70,9 +70,9 @@ class TreeTypeFixtures extends Fixture
                 'scientificName' => 'Betula pendula',
                 'commonName' => 'Bouleau verruqueux',
                 'maxCarbonStorage' => 75.0,
-                'carbonGrowthCoefficient' => 0.55,
-                'maxCoolZone' => 50.0,
-                'coolZoneGrowthCoefficient' => 0.5,
+                'carbonGrowthK' => 8,
+                'maxCoolZone' => 8.0,
+                'coolZoneGrowthK' => 6,
                 'maturityAge' => 15,
                 'allergyPotential' => 'élevé',
                 'resilience' => 'faible'
@@ -81,9 +81,9 @@ class TreeTypeFixtures extends Fixture
                 'scientificName' => 'Fraxinus excelsior',
                 'commonName' => 'Frêne commun',
                 'maxCarbonStorage' => 140.0,
-                'carbonGrowthCoefficient' => 0.69,
-                'maxCoolZone' => 72.0,
-                'coolZoneGrowthCoefficient' => 0.63,
+                'carbonGrowthK' => 14,
+                'maxCoolZone' => 14.0,
+                'coolZoneGrowthK' => 12,
                 'maturityAge' => 28,
                 'allergyPotential' => 'moyen',
                 'resilience' => 'moyenne'
@@ -95,9 +95,9 @@ class TreeTypeFixtures extends Fixture
             $treeType->setScientificName($typeData['scientificName']);
             $treeType->setCommonName($typeData['commonName']);
             $treeType->setMaxCarbonStorage($typeData['maxCarbonStorage']);
-            $treeType->setCarbonGrowthCoefficient($typeData['carbonGrowthCoefficient']);
+            $treeType->setCarbonGrowthK($typeData['carbonGrowthK']);
             $treeType->setMaxCoolZone($typeData['maxCoolZone']);
-            $treeType->setCoolZoneGrowthCoefficient($typeData['coolZoneGrowthCoefficient']);
+            $treeType->setCoolZoneGrowthK($typeData['coolZoneGrowthK']);
             $treeType->setMaturityAge($typeData['maturityAge']);
             $treeType->setAllergyPotential($typeData['allergyPotential']);
             $treeType->setResilience($typeData['resilience']);

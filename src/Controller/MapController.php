@@ -2,9 +2,8 @@
 
 namespace App\Controller;
 
-use App\Entity\Tree;
-use App\Entity\TreeRequest;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Repository\TreeRepository;
+use App\Repository\TreeRequestRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -12,17 +11,27 @@ use Symfony\Component\Routing\Attribute\Route;
 class MapController extends AbstractController
 {
     #[Route('/carte', name: 'app_map')]
-    public function index(EntityManagerInterface $entityManager): Response
-    {
+    public function index(
+        TreeRepository $treeRepository,
+        TreeRequestRepository $treeRequestRepository
+    ): Response {
         $user = $this->getUser();
 
-        $statusPlante = $entityManager->getRepository(\App\Entity\TreeStatus::class)
-            ->findOneBy(['name' => 'plante']);
+        if ($this->isGranted('ROLE_AGENT')) {
+            $trees = $treeRepository->findAll();
+            $requests = $treeRequestRepository->findBy(['status' => 'en_attente']);
+        } elseif ($user) {
+            $trees = $treeRepository->findBy(['status' => ['valide', 'en_projet', 'supprime']]);
+            $requests = $treeRequestRepository->findBy([
+                'citizen' => $user,
+                'status' => 'en_attente'
+            ]);
+        } else {
+            $trees = $treeRepository->findBy(['status' => ['valide', 'en_projet', 'supprime']]);
+            $requests = [];
+        }
 
-        $treesEntities = $entityManager->getRepository(Tree::class)
-            ->findBy(['status' => $statusPlante]);
-
-        $trees = array_map(function($tree) {
+        $treesData = array_map(function($tree) {
             return [
                 'id' => $tree->getId(),
                 'latitude' => $tree->getLatitude(),
@@ -33,29 +42,24 @@ class MapController extends AbstractController
                     'scientificName' => $tree->getTreeType()->getScientificName(),
                 ],
                 'status' => [
+                    'code' => $tree->getStatus()->getName(),
                     'label' => $tree->getStatus()->getLabel(),
                 ],
                 'contributor' => $tree->getContributor() ? [
                     'name' => $tree->getContributor()->getName(),
                 ] : null,
+                'environmental' => [
+                    'carbonStorage' => $tree->getCurrentCarbonStorage(),
+                    'coolZoneRadius' => $tree->getCurrentCoolZoneRadius(),
+                    'maturityPercentage' => $tree->getMaturityPercentage(),
+                    'isMature' => $tree->isMature(),
+                    'allergyPotential' => $tree->getTreeType()->getAllergyPotential(),
+                    'resilience' => $tree->getTreeType()->getResilience(),
+                ]
             ];
-        }, $treesEntities);
+        }, $trees);
 
-        $requestsEntities = [];
-        if ($user) {
-            if ($this->isGranted('ROLE_AGENT')) {
-                $requestsEntities = $entityManager->getRepository(TreeRequest::class)
-                    ->findBy(['status' => 'en_attente']);
-            } else {
-                $requestsEntities = $entityManager->getRepository(TreeRequest::class)
-                    ->findBy([
-                        'citizen' => $user,
-                        'status' => 'en_attente'
-                    ]);
-            }
-        }
-
-        $requests = array_map(function($request) {
+        $requestsData = array_map(function($request) {
             return [
                 'id' => $request->getId(),
                 'latitude' => $request->getLatitude(),
@@ -68,11 +72,11 @@ class MapController extends AbstractController
                     'name' => $request->getCitizen()->getName(),
                 ],
             ];
-        }, $requestsEntities);
+        }, $requests);
 
         return $this->render('map/index.html.twig', [
-            'trees' => $trees,
-            'requests' => $requests,
+            'trees' => $treesData,
+            'requests' => $requestsData,
         ]);
     }
 }
