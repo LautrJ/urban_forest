@@ -33,13 +33,13 @@
                 <div class="filter-checkboxes">
                     <label>
                         <input type="checkbox" id="filter-trees" checked onchange="toggleLayer('trees')">
-                        <span>Arbres recensés ({{ trees|length }})</span>
+                        <span>Arbres recensés ({{ treesCount }})</span>
                     </label>
 
-                    {% if requests|length > 0 %}
+                    {% if requestsCount > 0 %}
                         <label>
                             <input type="checkbox" id="filter-requests" checked onchange="toggleLayer('requests')">
-                            <span>Demandes en attente ({{ requests|length }})</span>
+                            <span>Demandes en attente ({{ requestsCount }})</span>
                         </label>
                     {% endif %}
                 </div>
@@ -71,8 +71,8 @@
 {% block javascripts %}
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const treesData = {{ trees|json_encode|raw }};
-        const requestsData = {{ requests|json_encode|raw }};
+        const treesData = {{ trees|raw }};
+        const requestsData = {{ requests|raw }};
 
         const map = L.map('map').setView([48.8566, 2.3522], 13);
 
@@ -192,6 +192,18 @@
             );
             map.fitBounds(bounds, { padding: [50, 50] });
         }
+
+        {% if focusedTreeId %}
+        const focusedTreeId = {{ focusedTreeId }};
+
+        const focusedTree = treesData.find(t => t.id === focusedTreeId);
+
+        if (focusedTree) {
+            map.setView([focusedTree.latitude, focusedTree.longitude], 17);
+
+            console.log('Centrage sur l\'arbre #' + focusedTreeId);
+        }
+        {% endif %}
 
         function toggleLayer(layerType) {
             if (layerType === 'trees') {

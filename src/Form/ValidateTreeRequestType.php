@@ -6,7 +6,7 @@ use App\Entity\TreeStatus;
 use App\Entity\TreeType;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
@@ -23,7 +23,6 @@ class ValidateTreeRequestType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            // Essence de l'arbre (peut être modifiée par l'agent)
             ->add('treeType', EntityType::class, [
                 'class' => TreeType::class,
                 'choice_label' => function(TreeType $treeType) {
@@ -37,7 +36,6 @@ class ValidateTreeRequestType extends AbstractType
                 ]
             ])
 
-            // Âge (peut être modifié par l'agent)
             ->add('age', IntegerType::class, [
                 'label' => 'Âge (années)',
                 'required' => false,
@@ -51,7 +49,6 @@ class ValidateTreeRequestType extends AbstractType
                 ]
             ])
 
-            // Hauteur (nouveau champ)
             ->add('height', NumberType::class, [
                 'label' => 'Hauteur (mètres)',
                 'required' => false,
@@ -65,7 +62,6 @@ class ValidateTreeRequestType extends AbstractType
                 ]
             ])
 
-            // Diamètre (nouveau champ)
             ->add('diameter', NumberType::class, [
                 'label' => 'Diamètre du tronc (cm)',
                 'required' => false,
@@ -79,7 +75,6 @@ class ValidateTreeRequestType extends AbstractType
                 ]
             ])
 
-            // Date de plantation (optionnelle)
             ->add('plantationDate', DateType::class, [
                 'label' => 'Date de plantation (si connue)',
                 'required' => false,
@@ -89,7 +84,6 @@ class ValidateTreeRequestType extends AbstractType
                 ]
             ])
 
-            // Statut de l'arbre
             ->add('status', EntityType::class, [
                 'class' => TreeStatus::class,
                 'choice_label' => 'label',
@@ -102,7 +96,6 @@ class ValidateTreeRequestType extends AbstractType
                 'help' => '"Validé" = arbre existant | "En projet" = plantation future'
             ])
 
-            // Latitude (peut être modifiée)
             ->add('latitude', NumberType::class, [
                 'label' => 'Latitude',
                 'required' => true,
@@ -113,7 +106,6 @@ class ValidateTreeRequestType extends AbstractType
                 ]
             ])
 
-            // Longitude (peut être modifiée)
             ->add('longitude', NumberType::class, [
                 'label' => 'Longitude',
                 'required' => true,
@@ -124,22 +116,20 @@ class ValidateTreeRequestType extends AbstractType
                 ]
             ])
 
-            // Photos à ajouter - DÉSACTIVÉ TEMPORAIREMENT
-            /*
-            ->add('photos', FileType::class, [
-                'label' => 'Ajouter des photos',
-                'multiple' => true,
+            ->add('photoFiles', FileType::class, [
+                'label' => 'Ajouter des photos supplémentaires (optionnel)',
                 'mapped' => false,
                 'required' => false,
+                'multiple' => true,
                 'attr' => [
                     'accept' => 'image/jpeg,image/png,image/webp',
-                    'class' => 'form-control'
+                    'class' => 'form-control-file',
                 ],
                 'constraints' => [
-                    new Count(
-                        max: 5,
-                        maxMessage: 'Vous ne pouvez pas télécharger plus de {{ limit }} photos'
-                    ),
+                    new Count([
+                        'max' => 5,
+                        'maxMessage' => 'Maximum {{ limit }} photos',
+                    ]),
                     new All([
                         new File([
                             'maxSize' => '5M',
@@ -148,28 +138,20 @@ class ValidateTreeRequestType extends AbstractType
                                 'image/png',
                                 'image/webp',
                             ],
-                            'mimeTypesMessage' => 'Veuillez télécharger une image valide (JPEG, PNG, WEBP)',
+                            'mimeTypesMessage' => 'Format invalide (JPG, PNG ou WEBP uniquement)',
                         ])
-                    ])
+                    ]),
                 ],
-                'help' => 'Maximum 5 photos, 5 Mo par photo. Formats: JPEG, PNG, WEBP'
+                'help' => 'Vous pouvez ajouter jusqu\'à 5 photos supplémentaires',
             ])
-            */
 
-            // Action sur les photos existantes de la demande - DÉSACTIVÉ TEMPORAIREMENT
-            /*
-            ->add('keepRequestPhotos', ChoiceType::class, [
-                'label' => 'Photos de la demande du citoyen',
-                'choices' => [
-                    'Conserver toutes les photos' => 'keep_all',
-                    'Supprimer toutes les photos' => 'delete_all',
-                ],
-                'data' => 'keep_all',
-                'expanded' => true,
+            ->add('keepRequestPhotos', CheckboxType::class, [
+                'label' => 'Conserver les photos de la demande citoyenne',
                 'mapped' => false,
-                'required' => true
+                'required' => false,
+                'data' => true, // Coché par défaut
+                'help' => 'Les photos du citoyen seront copiées vers l\'arbre validé',
             ])
-            */
         ;
     }
 

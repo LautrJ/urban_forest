@@ -29,10 +29,9 @@
 
         <ul class="navbar-nav" id="navbar-menu">
             <li><a href="{{ path('app_home') }}" class="nav-link">Accueil</a></li>
+            <li><a href="{{ path('app_map') }}" class="nav-link">Carte</a></li>
 
             {% if is_granted('IS_AUTHENTICATED_FULLY') %}
-                <li><a href="{{ path('app_map') }}" class="nav-link">Carte</a></li>
-
                 {% if is_granted('ROLE_USER') %}
                     <li><a href="{{ path('app_request_list') }}" class="nav-link">Mes demandes</a></li>
                 {% endif %}

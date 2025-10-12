@@ -38,8 +38,8 @@ class TreeRequest
     #[ORM\Column(length: 50)]
     private ?string $status = null;
 
-    #[ORM\Column]
-    private ?bool $needsAppointment = null;
+    #[ORM\Column(nullable: false)]
+    private ?\DateTime $requestedAppointmentDate = null;
 
     #[ORM\OneToOne(cascade: ['persist', 'remove'])]
     private ?Tree $validatedTree = null;
@@ -160,15 +160,14 @@ class TreeRequest
         return $this;
     }
 
-    public function isNeedsAppointment(): ?bool
+    public function getRequestedAppointmentDate(): ?\DateTime
     {
-        return $this->needsAppointment;
+        return $this->requestedAppointmentDate;
     }
 
-    public function setNeedsAppointment(bool $needsAppointment): static
+    public function setRequestedAppointmentDate(?\DateTime $requestedAppointmentDate): static
     {
-        $this->needsAppointment = $needsAppointment;
-
+        $this->requestedAppointmentDate = $requestedAppointmentDate;
         return $this;
     }
 

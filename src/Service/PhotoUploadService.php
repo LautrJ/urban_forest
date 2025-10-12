@@ -3,8 +3,6 @@
 namespace App\Service;
 
 use App\Entity\Photo;
-use App\Entity\Tree;
-use App\Entity\TreeRequest;
 use App\Entity\User;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -12,251 +10,113 @@ use Symfony\Component\String\Slugger\SluggerInterface;
 
 class PhotoUploadService
 {
-    private const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-    private const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-    private const MAX_PHOTOS_PER_ENTITY = 5;
+    private string $uploadsDirectory;
+    private SluggerInterface $slugger;
 
-    public function __construct(
-        private string $uploadsDirectory,
-        private SluggerInterface $slugger
-    ) {
-    }
-
-    /**
-     * Upload une ou plusieurs photos pour un arbre
-     *
-     * @param array<UploadedFile> $uploadedFiles
-     * @param Tree $tree
-     * @param User $uploadedBy
-     * @param bool $setFirstAsPrimary
-     * @return array<Photo>
-     * @throws \Exception
-     */
-    public function uploadPhotosForTree(
-        array $uploadedFiles,
-        Tree $tree,
-        User $uploadedBy,
-        bool $setFirstAsPrimary = false
-    ): array {
-        $this->validatePhotoLimit($tree->getPhotos()->count(), count($uploadedFiles));
-
-        $photos = [];
-        $isFirst = true;
-
-        foreach ($uploadedFiles as $uploadedFile) {
-            $photo = $this->processUpload(
-                $uploadedFile,
-                'trees',
-                $uploadedBy,
-                $setFirstAsPrimary && $isFirst && $tree->getPhotos()->isEmpty()
-            );
-
-            $photo->setTree($tree);
-            $photos[] = $photo;
-
-            $isFirst = false;
-        }
-
-        return $photos;
-    }
-
-    /**
-     * Upload une ou plusieurs photos pour une demande
-     *
-     * @param array<UploadedFile> $uploadedFiles
-     * @param TreeRequest $treeRequest
-     * @param User $uploadedBy
-     * @param bool $setFirstAsPrimary
-     * @return array<Photo>
-     * @throws \Exception
-     */
-    public function uploadPhotosForRequest(
-        array $uploadedFiles,
-        TreeRequest $treeRequest,
-        User $uploadedBy,
-        bool $setFirstAsPrimary = false
-    ): array {
-        $this->validatePhotoLimit($treeRequest->getPhotos()->count(), count($uploadedFiles));
-
-        $photos = [];
-        $isFirst = true;
-
-        foreach ($uploadedFiles as $uploadedFile) {
-            $photo = $this->processUpload(
-                $uploadedFile,
-                'requests',
-                $uploadedBy,
-                $setFirstAsPrimary && $isFirst && $treeRequest->getPhotos()->isEmpty()
-            );
-
-            $photo->setTreeRequest($treeRequest);
-            $photos[] = $photo;
-
-            $isFirst = false;
-        }
-
-        return $photos;
-    }
-
-    /**
-     * Transfère les photos d'une TreeRequest vers un Tree
-     *
-     * @param TreeRequest $treeRequest
-     * @param Tree $tree
-     * @return array<Photo>
-     */
-    public function transferPhotosFromRequestToTree(TreeRequest $treeRequest, Tree $tree): array
+    public function __construct(string $uploadsDirectory, SluggerInterface $slugger)
     {
-        $transferredPhotos = [];
-
-        foreach ($treeRequest->getPhotos() as $requestPhoto) {
-            // Copier le fichier physique
-            $oldPath = $this->uploadsDirectory . '/requests/' . $requestPhoto->getFilename();
-            $newPath = $this->uploadsDirectory . '/trees/' . $requestPhoto->getFilename();
-
-            if (file_exists($oldPath)) {
-                copy($oldPath, $newPath);
-
-                // Créer une nouvelle entité Photo pour le Tree
-                $treePhoto = new Photo();
-                $treePhoto->setFilename($requestPhoto->getFilename());
-                $treePhoto->setOriginalName($requestPhoto->getOriginalName());
-                $treePhoto->setPath('trees/' . $requestPhoto->getFilename());
-                $treePhoto->setMimeType($requestPhoto->getMimeType());
-                $treePhoto->setSize($requestPhoto->getSize());
-                $treePhoto->setUploadedBy($requestPhoto->getUploadedBy());
-                $treePhoto->setIsPrimary($requestPhoto->isPrimary());
-                $treePhoto->setTree($tree);
-                $treePhoto->setCreatedAt(new \DateTimeImmutable());
-
-                $transferredPhotos[] = $treePhoto;
-            }
-        }
-
-        return $transferredPhotos;
+        $this->uploadsDirectory = $uploadsDirectory;
+        $this->slugger = $slugger;
     }
 
     /**
-     * Supprime une photo (fichier + entité)
+     * Upload une photo et retourne l'entité Photo créée
      *
-     * @param Photo $photo
-     */
-    public function deletePhoto(Photo $photo): void
-    {
-        $filePath = $this->uploadsDirectory . '/' . $photo->getPath();
-
-        if (file_exists($filePath)) {
-            unlink($filePath);
-        }
-    }
-
-    /**
-     * Définit une photo comme principale et retire le flag des autres
-     *
-     * @param Photo $photo
-     * @param Tree|TreeRequest $entity
-     */
-    public function setPrimaryPhoto(Photo $photo, Tree|TreeRequest $entity): void
-    {
-        // Retirer le flag isPrimary de toutes les photos
-        foreach ($entity->getPhotos() as $existingPhoto) {
-            $existingPhoto->setIsPrimary(false);
-        }
-
-        // Définir cette photo comme principale
-        $photo->setIsPrimary(true);
-    }
-
-    /**
-     * Traite l'upload d'un fichier
-     *
-     * @param UploadedFile $uploadedFile
-     * @param string $subDirectory (trees ou requests)
-     * @param User $uploadedBy
-     * @param bool $isPrimary
+     * @param UploadedFile $file
+     * @param User $user
+     * @param string $type 'tree' ou 'request'
      * @return Photo
-     * @throws \Exception
      */
-    private function processUpload(
-        UploadedFile $uploadedFile,
-        string $subDirectory,
-        User $uploadedBy,
-        bool $isPrimary = false
-    ): Photo {
-        // ⭐ VALIDATION MINIMALISTE - ne pas toucher au fichier temporaire
-        if (!$uploadedFile->isValid()) {
-            throw new \Exception('Erreur lors de l\'upload du fichier');
-        }
+    public function upload(UploadedFile $file, User $user, string $type = 'request'): Photo
+    {
+        $subDir = $type === 'tree' ? 'trees' : 'requests';
+        $targetDirectory = $this->uploadsDirectory . '/' . $subDir;
 
-        if ($uploadedFile->getSize() > self::MAX_FILE_SIZE) {
-            throw new \Exception('Le fichier est trop volumineux. Taille maximale: 5 Mo');
-        }
-
-        $mimeType = $uploadedFile->getMimeType();
-        if ($mimeType && !in_array($mimeType, self::ALLOWED_MIME_TYPES)) {
-            throw new \Exception('Type de fichier non autorisé. Formats acceptés: JPEG, PNG, WEBP');
-        }
-
-        // Générer un nom de fichier unique
-        $originalFilename = pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
-        $safeFilename = $this->slugger->slug($originalFilename);
-        $newFilename = $safeFilename . '-' . uniqid() . '.' . $uploadedFile->guessExtension();
-
-        // Créer le répertoire si nécessaire
-        $targetDirectory = $this->uploadsDirectory . '/' . $subDirectory;
         if (!is_dir($targetDirectory)) {
             mkdir($targetDirectory, 0755, true);
         }
 
-        // ⭐ DÉPLACER LE FICHIER IMMÉDIATEMENT
-        try {
-            $uploadedFile->move($targetDirectory, $newFilename);
-        } catch (FileException $e) {
-            throw new \Exception('Erreur lors de l\'upload du fichier: ' . $e->getMessage());
+        $originalFilename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $safeFilename = $this->slugger->slug($originalFilename);
+
+        $extension = $file->getClientOriginalExtension();
+        if (empty($extension)) {
+            $extension = $file->guessExtension() ?? 'jpg';
         }
 
-        // Créer l'entité Photo
+        $newFilename = $safeFilename . '-' . uniqid() . '.' . $extension;
+
+        $size = $file->getSize();
+
+        try {
+            $file->move($targetDirectory, $newFilename);
+        } catch (FileException $e) {
+            throw new \Exception('Erreur lors de l\'upload : ' . $e->getMessage());
+        }
+
+        $mimeType = $file->getClientMimeType() ?? 'image/jpeg';
+
         $photo = new Photo();
         $photo->setFilename($newFilename);
-        $photo->setOriginalName($uploadedFile->getClientOriginalName());
-        $photo->setPath($subDirectory . '/' . $newFilename);
-        $photo->setMimeType($mimeType ?? 'image/jpeg');
-        $photo->setSize($uploadedFile->getSize());
-        $photo->setUploadedBy($uploadedBy);
-        $photo->setIsPrimary($isPrimary);
+        $photo->setOriginalName($originalFilename);
+        $photo->setPath($subDir . '/' . $newFilename);
+        $photo->setMimeType($mimeType);
+        $photo->setSize($size);
+        $photo->setUploadedBy($user);
         $photo->setCreatedAt(new \DateTimeImmutable());
 
         return $photo;
     }
 
     /**
-     * Valide un fichier uploadé
+     * Supprime une photo du système de fichiers
      *
-     * @param UploadedFile $file
-     * @throws \Exception
+     * @param Photo $photo
+     * @return bool
      */
-    private function validateFile(UploadedFile $file): void
+    public function delete(Photo $photo): bool
     {
-        // ⭐ CETTE MÉTHODE N'EST PLUS UTILISÉE
-        // La validation se fait directement dans processUpload()
+        $filepath = $this->uploadsDirectory . '/' . $photo->getPath();
+
+        if (file_exists($filepath)) {
+            return unlink($filepath);
+        }
+
+        return false;
     }
 
     /**
-     * Valide la limite de photos
+     * Copie une photo de requests/ vers trees/ lors de la validation
      *
-     * @param int $currentCount
-     * @param int $newCount
-     * @throws \Exception
+     * @param Photo $photo
+     * @return Photo
      */
-    private function validatePhotoLimit(int $currentCount, int $newCount): void
+    public function copyToTrees(Photo $photo): Photo
     {
-        if ($currentCount + $newCount > self::MAX_PHOTOS_PER_ENTITY) {
-            throw new \Exception(sprintf(
-                'Nombre maximum de photos atteint (%d). Actuellement: %d, tentative d\'ajout: %d',
-                self::MAX_PHOTOS_PER_ENTITY,
-                $currentCount,
-                $newCount
-            ));
+        $oldPath = $this->uploadsDirectory . '/' . $photo->getPath();
+
+        $newFilename = $photo->getFilename();
+        $targetDirectory = $this->uploadsDirectory . '/trees';
+
+        if (!is_dir($targetDirectory)) {
+            mkdir($targetDirectory, 0755, true);
         }
+
+        $newPath = $targetDirectory . '/' . $newFilename;
+
+        if (!copy($oldPath, $newPath)) {
+            throw new \Exception('Impossible de copier la photo');
+        }
+
+        $newPhoto = new Photo();
+        $newPhoto->setFilename($newFilename);
+        $newPhoto->setOriginalName($photo->getOriginalName());
+        $newPhoto->setPath('trees/' . $newFilename);
+        $newPhoto->setMimeType($photo->getMimeType());
+        $newPhoto->setSize($photo->getSize());
+        $newPhoto->setUploadedBy($photo->getUploadedBy());
+        $newPhoto->setIsPrimary($photo->isPrimary());
+
+        return $newPhoto;
     }
 }

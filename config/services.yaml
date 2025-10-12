@@ -20,7 +20,6 @@ services:
       - '../src/Entity/'
       - '../src/Kernel.php'
 
-  # ⭐ CORRECTION : bien indenté sous services:
   App\Service\PhotoUploadService:
     arguments:
       $uploadsDirectory: '%kernel.project_dir%/public/uploads'

@@ -30,6 +30,20 @@
         </div>
     </div>
 
+    {# Actions rapides pour ADMIN uniquement #}
+    {% if is_granted('ROLE_ADMIN') %}
+        <div class="section-header" style="margin-top: 2rem;">
+            <h2>⚙️ Actions administrateur</h2>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+            <a href="{{ path('app_admin_agents_list') }}" class="btn btn-primary" style="padding: 1rem; text-align: center; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                <span style="font-size: 1.5rem;">👥</span>
+                <span>Gérer les agents</span>
+            </a>
+        </div>
+    {% endif %}
+
     <div class="accordion-section">
         <button class="accordion-header" onclick="toggleAccordion('requests')">
             <div class="accordion-title">
@@ -82,10 +96,11 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if request.needsAppointment %}
-                                    <span class="badge badge-warning">Demandé</span>
+                                {% if request.requestedAppointmentDate %}
+                                    <strong>{{ request.requestedAppointmentDate|date('d/m/Y') }}</strong><br>
+                                    <small style="color: #666;">à {{ request.requestedAppointmentDate|date('H:i') }}</small>
                                 {% else %}
-                                    <span style="color: #999;">Non</span>
+                                    <em style="color: #999;">Aucune date</em>
                                 {% endif %}
                             </td>
                             <td>
@@ -105,7 +120,7 @@
                 <span class="chevron" id="chevron-trees">▶</span>
                 <h2>Arbres recensés ({{ trees|length }})</h2>
             </div>
-            <a href="#" class="btn-action btn-view" onclick="event.stopPropagation()">+ Ajouter un arbre</a>
+            <a href="{{ path('app_admin_tree_create') }}" class="btn-action btn-view" onclick="event.stopPropagation()">+ Recenser un arbre</a>
         </button>
 
         <div class="accordion-content collapsed" id="content-trees">
@@ -157,7 +172,7 @@
                             </td>
                             <td>{{ tree.createdAt|date('d/m/Y') }}</td>
                             <td>
-                                <a href="#" class="btn-action btn-view">Voir</a>
+                                <a href="{{ path('app_map', {treeId: tree.id}) }}" class="btn-action btn-view">Voir sur la carte</a>
                             </td>
                         </tr>
                     {% endfor %}

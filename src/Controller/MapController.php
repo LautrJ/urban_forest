@@ -4,6 +4,8 @@ namespace App\Controller;
 
 use App\Repository\TreeRepository;
 use App\Repository\TreeRequestRepository;
+use App\Repository\TreeStatusRepository;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -13,26 +15,38 @@ class MapController extends AbstractController
     #[Route('/carte', name: 'app_map')]
     public function index(
         TreeRepository $treeRepository,
-        TreeRequestRepository $treeRequestRepository
+        TreeRequestRepository $treeRequestRepository,
+        TreeStatusRepository $treeStatusRepository,
+        Request $request
     ): Response {
         $user = $this->getUser();
+        $focusedTreeId = $request->query->get('treeId');
 
         if ($this->isGranted('ROLE_AGENT')) {
             $trees = $treeRepository->findAll();
             $requests = $treeRequestRepository->findBy(['status' => 'en_attente']);
-        } elseif ($user) {
-            $trees = $treeRepository->findBy(['status' => ['valide', 'en_projet', 'supprime']]);
-            $requests = $treeRequestRepository->findBy([
-                'citizen' => $user,
-                'status' => 'en_attente'
-            ]);
         } else {
-            $trees = $treeRepository->findBy(['status' => ['valide', 'en_projet', 'supprime']]);
-            $requests = [];
+            $statusEnProjet = $treeStatusRepository->find(1);
+            $statusPlante = $treeStatusRepository->find(3);
+            $statusSupprime = $treeStatusRepository->find(4);
+
+            $trees = $treeRepository->findBy([
+                'status' => [$statusEnProjet, $statusPlante, $statusSupprime]
+            ]);
+
+            if ($user) {
+                $requests = $treeRequestRepository->findBy([
+                    'citizen' => $user,
+                    'status' => 'en_attente'
+                ]);
+            } else {
+                $requests = [];
+            }
         }
 
-        $treesData = array_map(function($tree) {
-            return [
+        $treesData = [];
+        foreach ($trees as $tree) {
+            $treesData[] = [
                 'id' => $tree->getId(),
                 'latitude' => $tree->getLatitude(),
                 'longitude' => $tree->getLongitude(),
@@ -46,37 +60,42 @@ class MapController extends AbstractController
                     'label' => $tree->getStatus()->getLabel(),
                 ],
                 'contributor' => $tree->getContributor() ? [
-                    'name' => $tree->getContributor()->getName(),
+                    'name' => $tree->getContributor()->getName()
                 ] : null,
                 'environmental' => [
                     'carbonStorage' => $tree->getCurrentCarbonStorage(),
                     'coolZoneRadius' => $tree->getCurrentCoolZoneRadius(),
-                    'maturityPercentage' => $tree->getMaturityPercentage(),
                     'isMature' => $tree->isMature(),
+                    'maturityPercentage' => $tree->getMaturityPercentage(),
                     'allergyPotential' => $tree->getTreeType()->getAllergyPotential(),
                     'resilience' => $tree->getTreeType()->getResilience(),
                 ]
             ];
-        }, $trees);
+        }
 
-        $requestsData = array_map(function($request) {
-            return [
+        $requestsData = [];
+        foreach ($requests as $request) {
+            $requestsData[] = [
                 'id' => $request->getId(),
                 'latitude' => $request->getLatitude(),
                 'longitude' => $request->getLongitude(),
-                'estimatedAge' => $request->getEstimatedAge(),
-                'proposedTreeType' => $request->getProposedTreeType() ? [
-                    'commonName' => $request->getProposedTreeType()->getCommonName(),
-                ] : null,
                 'citizen' => [
-                    'name' => $request->getCitizen()->getName(),
+                    'name' => $request->getCitizen()->getName()
                 ],
+                'proposedTreeType' => $request->getProposedTreeType() ? [
+                    'commonName' => $request->getProposedTreeType()->getCommonName()
+                ] : null,
+                'estimatedAge' => $request->getEstimatedAge(),
+                'status' => $request->getStatus(),
             ];
-        }, $requests);
+        }
 
         return $this->render('map/index.html.twig', [
-            'trees' => $treesData,
-            'requests' => $requestsData,
+            'trees' => json_encode($treesData),
+            'requests' => json_encode($requestsData),
+            'focusedTreeId' => $focusedTreeId,
+            'treesCount' => count($treesData),
+            'requestsCount' => count($requestsData),
         ]);
     }
 }

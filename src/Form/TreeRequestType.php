@@ -6,12 +6,17 @@ use App\Entity\TreeRequest;
 use App\Entity\TreeType;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
+use Symfony\Component\Form\Extension\Core\Type\DateTimeType;
+use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Component\Validator\Constraints\All;
+use Symfony\Component\Validator\Constraints\Count;
+use Symfony\Component\Validator\Constraints\File;
+use Symfony\Component\Validator\Constraints\GreaterThan;
 use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Component\Validator\Constraints\Range;
 
@@ -68,9 +73,52 @@ class TreeRequestType extends AbstractType
                 ],
             ])
 
-            ->add('needsAppointment', CheckboxType::class, [
-                'label' => 'Je souhaite un rendez-vous avec un agent pour valider les informations sur place',
+            ->add('requestedAppointmentDate', DateTimeType::class, [
+                'label' => 'Date et heure souhaitées pour le rendez-vous',
+                'widget' => 'single_text',
+                'required' => true,
+                'attr' => [
+                    'min' => (new \DateTime())->format('Y-m-d\TH:i'),
+                ],
+                'constraints' => [
+                    new NotBlank([
+                        'message' => 'La date de rendez-vous est obligatoire',
+                    ]),
+                    new GreaterThan([
+                        'value' => 'now',
+                        'message' => 'La date de rendez-vous doit être dans le futur',
+                    ]),
+                ],
+                'help' => 'Proposez une date et heure qui vous conviennent. Un agent vous contactera pour confirmer.',
+            ])
+
+            ->add('photoFiles', FileType::class, [
+                'label' => 'Photos de l\'arbre (optionnel)',
+                'mapped' => false,
                 'required' => false,
+                'multiple' => true,
+                'attr' => [
+                    'accept' => 'image/jpeg,image/png,image/webp',
+                    'class' => 'form-control-file',
+                ],
+                'constraints' => [
+                    new Count([
+                        'max' => 5,
+                        'maxMessage' => 'Vous ne pouvez pas uploader plus de {{ limit }} photos',
+                    ]),
+                    new All([
+                        new File([
+                            'maxSize' => '5M',
+                            'mimeTypes' => [
+                                'image/jpeg',
+                                'image/png',
+                                'image/webp',
+                            ],
+                            'mimeTypesMessage' => 'Veuillez uploader une image valide (JPG, PNG ou WEBP)',
+                        ])
+                    ]),
+                ],
+                'help' => 'Maximum 5 photos, 5 Mo par photo (JPG, PNG ou WEBP)',
             ])
         ;
     }

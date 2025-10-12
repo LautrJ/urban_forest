@@ -25,12 +25,12 @@
                 </div>
 
                 <div class="detail-item">
-                    <div class="detail-label">Rendez-vous demandé</div>
+                    <div class="detail-label">Date de rendez-vous proposée</div>
                     <div class="detail-value">
-                        {% if treeRequest.needsAppointment %}
-                            ✅ Oui, le citoyen souhaite un RDV
+                        {% if treeRequest.requestedAppointmentDate %}
+                            📅 <strong>{{ treeRequest.requestedAppointmentDate|date('d/m/Y à H:i') }}</strong>
                         {% else %}
-                            ❌ Non nécessaire
+                            <em style="color: #999;">Aucune date proposée</em>
                         {% endif %}
                     </div>
                 </div>
@@ -140,26 +140,41 @@
                 </div>
             </div>
 
-            {# SECTION PHOTOS DÉSACTIVÉE TEMPORAIREMENT
-                <div class="form-section">
-                    <h3 style="color: var(--forest-dark); margin-bottom: 1rem;">📸 Gestion des photos</h3>
+            <div class="form-section">
+                <h3 style="color: var(--forest-dark); margin-bottom: 1rem;">📸 Gestion des photos</h3>
 
-                    {% if treeRequest.photos|length > 0 %}
-                        <div class="form-group">
-                            {{ form_label(form.keepRequestPhotos) }}
-                            {{ form_widget(form.keepRequestPhotos) }}
-                            {{ form_errors(form.keepRequestPhotos) }}
+                {% if treeRequest.photos|length > 0 %}
+                    <div style="margin-bottom: 1.5rem;">
+                        <strong>Photos fournies par le citoyen ({{ treeRequest.photos|length }}) :</strong>
+                        <div class="photo-gallery" style="margin-top: 0.75rem;">
+                            {% for photo in treeRequest.photos %}
+                                <div class="photo-gallery-item">
+                                    <img src="{{ photo.webPath }}" alt="{{ photo.originalName }}">
+                                    {% if photo.isPrimary %}
+                                        <span class="photo-primary-badge">⭐ Principale</span>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
                         </div>
-                    {% endif %}
+                    </div>
 
                     <div class="form-group">
-                        {{ form_label(form.photos) }}
-                        {{ form_widget(form.photos) }}
-                        {{ form_help(form.photos) }}
-                        {{ form_errors(form.photos) }}
+                        {{ form_row(form.keepRequestPhotos) }}
                     </div>
+                {% else %}
+                    <p style="color: #666; font-style: italic;">Aucune photo fournie par le citoyen.</p>
+                {% endif %}
+
+                <div class="form-group">
+                    {{ form_label(form.photoFiles) }}
+                    {{ form_widget(form.photoFiles, {'attr': {'id': 'agent-photo-input'}}) }}
+                    {{ form_help(form.photoFiles) }}
+                    {{ form_errors(form.photoFiles) }}
+
+                    {# Prévisualisation #}
+                    <div id="agent-photo-preview" class="photo-preview"></div>
                 </div>
-            #}
+            </div>
 
             <div class="form-actions" style="display: flex; gap: 1rem; margin-top: 2rem;">
                 <button type="submit" class="btn btn-validate" style="flex: 1;">
@@ -174,5 +189,49 @@
             {{ form_end(form) }}
         </div>
     </div>
+{% endblock %}
 
+{% block javascripts %}
+    <script>
+        const agentPhotoInput = document.getElementById('agent-photo-input');
+        const agentPhotoPreview = document.getElementById('agent-photo-preview');
+
+        if (agentPhotoInput) {
+            agentPhotoInput.addEventListener('change', function(e) {
+                agentPhotoPreview.innerHTML = '';
+                const files = Array.from(e.target.files);
+
+                if (files.length > 5) {
+                    alert('Maximum 5 photos autorisées');
+                    agentPhotoInput.value = '';
+                    return;
+                }
+
+                files.forEach((file, index) => {
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert(`La photo "${file.name}" est trop volumineuse (max 5 Mo)`);
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const imgWrapper = document.createElement('div');
+                        imgWrapper.className = 'photo-preview-item';
+
+                        const img = document.createElement('img');
+                        img.src = event.target.result;
+
+                        const badge = document.createElement('span');
+                        badge.className = 'photo-badge';
+                        badge.textContent = `Photo ${index + 1}`;
+
+                        imgWrapper.appendChild(img);
+                        imgWrapper.appendChild(badge);
+                        agentPhotoPreview.appendChild(imgWrapper);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+        }
+    </script>
 {% endblock %}

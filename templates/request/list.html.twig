@@ -66,16 +66,33 @@
                         </div>
 
                         <div class="info-item">
-                            <span class="info-label">Rendez-vous</span>
+                            <span class="info-label">Date de RDV</span>
                             <span class="info-value">
-                            {% if request.needsAppointment %}
-                                ✅ Demandé
-                            {% else %}
-                                ❌ Non nécessaire
-                            {% endif %}
+                                {% if request.requestedAppointmentDate %}
+                                    <strong>{{ request.requestedAppointmentDate|date('d/m/Y') }}</strong><br>
+                                    <small style="color: #666;">à {{ request.requestedAppointmentDate|date('H:i') }}</small>
+                                {% else %}
+                                    <em style="color: #999;">Aucune date</em>
+                                {% endif %}
                         </span>
                         </div>
                     </div>
+
+                    {% if request.photos|length > 0 %}
+                        <div class="detail-item" style="grid-column: 1 / -1;">
+                            <div class="detail-label">Photos ({{ request.photos|length }})</div>
+                            <div class="photo-gallery">
+                                {% for photo in request.photos %}
+                                    <div class="photo-gallery-item">
+                                        <img src="{{ photo.webPath }}" alt="{{ photo.originalName }}">
+                                        {% if photo.isPrimary %}
+                                            <span class="photo-primary-badge">⭐</span>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
                 </div>
             {% endfor %}
         </div>

@@ -2,8 +2,10 @@
 
 namespace App\Controller;
 
+use App\Entity\Appointment;
 use App\Entity\TreeRequest;
 use App\Form\TreeRequestType;
+use App\Service\PhotoUploadService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -30,8 +32,11 @@ class RequestController extends AbstractController
     }
 
     #[Route('/nouvelle', name: 'app_request_new')]
-    public function new(Request $request, EntityManagerInterface $entityManager): Response
-    {
+    public function new(
+        Request $request,
+        EntityManagerInterface $entityManager,
+        PhotoUploadService $photoUploadService
+    ): Response {
         $treeRequest = new TreeRequest();
         $form = $this->createForm(TreeRequestType::class, $treeRequest);
 
@@ -42,7 +47,32 @@ class RequestController extends AbstractController
             $treeRequest->setStatus('en_attente');
             $treeRequest->setCreatedAt(new \DateTimeImmutable());
 
+            $appointment = new Appointment();
+            $appointment->setTreeRequest($treeRequest);
+            $appointment->setCitizen($this->getUser());
+            $appointment->setAppointmentDate($treeRequest->getRequestedAppointmentDate());
+            $appointment->setStatus('proposed');
+            $appointment->setCreatedAt(new \DateTimeImmutable());
+
             $entityManager->persist($treeRequest);
+            $entityManager->persist($appointment);
+
+            $photoFiles = $form->get('photoFiles')->getData();
+            if ($photoFiles) {
+                $isFirst = true;
+                foreach ($photoFiles as $photoFile) {
+                    $photo = $photoUploadService->upload($photoFile, $this->getUser(), 'request');
+                    $photo->setTreeRequest($treeRequest);
+
+                    if ($isFirst) {
+                        $photo->setIsPrimary(true);
+                        $isFirst = false;
+                    }
+
+                    $entityManager->persist($photo);
+                }
+            }
+
             $entityManager->flush();
 
             $this->addFlash('success', 'Votre demande de recensement a été envoyée avec succès !');

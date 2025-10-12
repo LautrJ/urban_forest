@@ -25,11 +25,8 @@ class Appointment
     #[ORM\ManyToOne(inversedBy: 'agentAppointments')]
     private ?User $agent = null;
 
-    #[ORM\Column(nullable: true)]
-    private ?\DateTime $proposedDate = null;
-
-    #[ORM\Column(nullable: true)]
-    private ?\DateTime $confirmedDate = null;
+    #[ORM\Column]
+    private ?\DateTime $appointmentDate = null;
 
     #[ORM\Column(length: 50)]
     private ?string $status = null;
@@ -87,27 +84,14 @@ class Appointment
         return $this;
     }
 
-    public function getProposedDate(): ?\DateTime
+    public function getAppointmentDate(): ?\DateTime
     {
-        return $this->proposedDate;
+        return $this->appointmentDate;
     }
 
-    public function setProposedDate(?\DateTime $proposedDate): static
+    public function setAppointmentDate(\DateTime $appointmentDate): static
     {
-        $this->proposedDate = $proposedDate;
-
-        return $this;
-    }
-
-    public function getConfirmedDate(): ?\DateTime
-    {
-        return $this->confirmedDate;
-    }
-
-    public function setConfirmedDate(?\DateTime $confirmedDate): static
-    {
-        $this->confirmedDate = $confirmedDate;
-
+        $this->appointmentDate = $appointmentDate;
         return $this;
     }
 
