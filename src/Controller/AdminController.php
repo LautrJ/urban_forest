@@ -3,8 +3,8 @@
 namespace App\Controller;
 
 use App\Entity\Tree;
-use App\Entity\TreeStatus;
 use App\Entity\TreeRequest;
+use App\Form\ValidateTreeRequestType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -49,46 +49,62 @@ class AdminController extends AbstractController
         TreeRequest $treeRequest,
         Request $request,
         EntityManagerInterface $entityManager
-    ): Response
-    {
+    ): Response {
+        $form = $this->createForm(ValidateTreeRequestType::class, null, [
+            'data' => [
+                'treeType' => $treeRequest->getProposedTreeType(),
+                'age' => $treeRequest->getEstimatedAge(),
+                'latitude' => $treeRequest->getLatitude(),
+                'longitude' => $treeRequest->getLongitude(),
+            ]
+        ]);
+
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            try {
+                $data = $form->getData();
+
+                $tree = new Tree();
+                $tree->setTreeType($data['treeType']);
+                $tree->setAge($data['age']);
+                $tree->setHeight($data['height']);
+                $tree->setDiameter($data['diameter']);
+
+                if ($data['plantationDate'] instanceof \DateTime) {
+                    $tree->setPlantationDate(\DateTimeImmutable::createFromMutable($data['plantationDate']));
+                } elseif ($data['plantationDate'] instanceof \DateTimeImmutable) {
+                    $tree->setPlantationDate($data['plantationDate']);
+                }
+
+                $tree->setLatitude($data['latitude']);
+                $tree->setLongitude($data['longitude']);
+                $tree->setStatus($data['status']);
+                $tree->setContributor($treeRequest->getCitizen());
+                $tree->setCreatedAt(new \DateTimeImmutable());
+
+                $entityManager->persist($tree);
+
+                $treeRequest->setStatus('validee');
+                $treeRequest->setValidatedTree($tree);
+                $treeRequest->setProcessedAt(new \DateTimeImmutable());
+                $treeRequest->setProcessedBy($this->getUser());
+
+                $entityManager->flush();
+
+                $this->addFlash('success', 'La demande a été validée et l\'arbre a été ajouté au recensement avec succès !');
+
+                return $this->redirectToRoute('app_admin_dashboard');
+
+            } catch (\Exception $e) {
+                $this->addFlash('error', 'Erreur lors de la validation : ' . $e->getMessage());
+            }
+        }
+
         return $this->render('admin/process_request.html.twig', [
             'treeRequest' => $treeRequest,
+            'form' => $form,
         ]);
-    }
-
-    #[Route('/demande/{id}/valider', name: 'app_admin_request_validate', methods: ['POST'])]
-    public function validateRequest(
-        TreeRequest $treeRequest,
-        Request $request,
-        EntityManagerInterface $entityManager
-    ): Response
-    {
-        // Créer l'arbre à partir de la demande
-        $tree = new Tree();
-        $tree->setLatitude($treeRequest->getLatitude());
-        $tree->setLongitude($treeRequest->getLongitude());
-        $tree->setTreeType($treeRequest->getProposedTreeType());
-        $tree->setAge($treeRequest->getEstimatedAge());
-        $tree->setContributor($treeRequest->getCitizen());
-        $tree->setCreatedAt(new \DateTimeImmutable());
-
-        // Récupérer le statut "planté" depuis la base
-        $statusPlante = $entityManager->getRepository(TreeStatus::class)
-            ->findOneBy(['name' => 'plante']);
-        $tree->setStatus($statusPlante);
-
-        // Mettre à jour la demande
-        $treeRequest->setStatus('validee');
-        $treeRequest->setValidatedTree($tree);
-        $treeRequest->setProcessedAt(new \DateTimeImmutable());
-        $treeRequest->setProcessedBy($this->getUser());
-
-        $entityManager->persist($tree);
-        $entityManager->flush();
-
-        $this->addFlash('success', 'La demande a été validée et l\'arbre a été ajouté au recensement.');
-
-        return $this->redirectToRoute('app_admin_dashboard');
     }
 
     #[Route('/demande/{id}/refuser', name: 'app_admin_request_reject', methods: ['POST'])]

@@ -279,4 +279,18 @@ class TreeRequest
 
         return $this;
     }
+
+    /**
+     * Retourne la photo principale ou la première photo disponible
+     */
+    public function getPrimaryPhoto(): ?Photo
+    {
+        foreach ($this->photos as $photo) {
+            if ($photo->isPrimary()) {
+                return $photo;
+            }
+        }
+
+        return $this->photos->first() ?: null;
+    }
 }

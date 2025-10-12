@@ -25,7 +25,7 @@ class Tree
     #[ORM\Column(nullable: true)]
     private ?int $age = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $plantationDate = null;
 
     #[ORM\Column(nullable: true)]
@@ -388,5 +388,19 @@ class Tree
             'allergyPotential' => $this->treeType?->getAllergyPotential(),
             'resilience' => $this->treeType?->getResilience(),
         ];
+    }
+
+    /**
+     * Retourne la photo principale ou la première photo disponible
+     */
+    public function getPrimaryPhoto(): ?Photo
+    {
+        foreach ($this->photos as $photo) {
+            if ($photo->isPrimary()) {
+                return $photo;
+            }
+        }
+
+        return $this->photos->first() ?: null;
     }
 }
