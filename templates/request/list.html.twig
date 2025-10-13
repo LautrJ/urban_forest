@@ -1,0 +1,133 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mes demandes de recensement{% endblock %}
+
+{% block body %}
+    <div class="page-header">
+        <h1>Mes demandes de recensement</h1>
+        <a href="{{ path('app_request_new') }}" class="btn-new-request">+ Nouvelle demande</a>
+    </div>
+
+    {% if requests is empty %}
+        <div class="no-requests">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor" color="var(--forest-light)">
+                <rect x="10" y="16" width="4" height="6"/>
+                <path d="M12 2 L7 10 H17 Z"/>
+                <path d="M12 8 L6 14 H18 Z"/>
+                <path d="M12 12 L5 18 H19 Z"/>
+            </svg>
+            <h2>Aucune demande pour le moment</h2>
+            <p>Vous n'avez pas encore soumis de demande de recensement d'arbre.</p>
+            <a href="{{ path('app_request_new') }}" class="btn-new-request">Créer ma première demande</a>
+        </div>
+    {% else %}
+        <div class="requests-grid">
+            {% for request in requests %}
+                <div class="request-card">
+                    <div class="request-header">
+                        <div>
+                            <h3 style="margin: 0 0 0.5rem 0; color: var(--forest-dark);">
+                                {% if request.proposedTreeType %}
+                                    {{ request.proposedTreeType.commonName }}
+                                {% else %}
+                                    Essence à identifier
+                                {% endif %}
+                            </h3>
+                            <span style="color: #666; font-size: 0.9rem;">
+                            Demandé le {{ request.createdAt|date('d/m/Y à H:i') }}
+                        </span>
+                        </div>
+                        <span class="request-status status-{{ request.status }}">
+                        {% if request.status == 'en_attente' %}
+                            En attente
+                        {% elseif request.status == 'validee' %}
+                            Validée
+                        {% elseif request.status == 'refusee' %}
+                            Refusée
+                        {% endif %}
+                    </span>
+                    </div>
+
+                    {% if request.description %}
+                        <p style="color: #666; margin: 1rem 0;">{{ request.description }}</p>
+                    {% endif %}
+
+                    <div class="request-info">
+                        {% if request.estimatedAge %}
+                            <div class="info-item">
+                                <span class="info-label">Âge estimé</span>
+                                <span class="info-value">{{ request.estimatedAge }} ans</span>
+                            </div>
+                        {% endif %}
+
+                        <div class="info-item">
+                            <span class="info-label">Coordonnées GPS</span>
+                            <span class="info-value">{{ request.latitude|number_format(6) }}, {{ request.longitude|number_format(6) }}</span>
+                        </div>
+
+                        <div class="info-item">
+                            <span class="info-label">Date de RDV</span>
+                            <span class="info-value">
+                                {% if request.requestedAppointmentDate %}
+                                    <strong>{{ request.requestedAppointmentDate|date('d/m/Y') }}</strong><br>
+                                    <small style="color: #666;">à {{ request.requestedAppointmentDate|date('H:i') }}</small>
+                                {% else %}
+                                    <em style="color: #999;">Aucune date</em>
+                                {% endif %}
+                        </span>
+                        </div>
+                    </div>
+
+                    {% if request.photos|length > 0 %}
+                        <div class="detail-item" style="grid-column: 1 / -1; margin-top: 1rem;">
+                            <div class="detail-label">Photos ({{ request.photos|length }})</div>
+                            <div class="photo-gallery">
+                                {% for photo in request.photos %}
+                                    <div class="photo-gallery-item" onclick="openPhotoModal('{{ photo.webPath }}', '{{ photo.originalName }}')" style="cursor: pointer;">
+                                        <img src="{{ photo.webPath }}" alt="{{ photo.originalName }}">
+                                        {% if photo.isPrimary %}
+                                            <span class="photo-primary-badge">⭐</span>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        <div id="photo-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; cursor: pointer;" onclick="closePhotoModal()">
+            <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 2rem;">
+                <button onclick="closePhotoModal()" style="position: absolute; top: 1rem; right: 1rem; background: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 1.5rem; cursor: pointer; z-index: 10000;">×</button>
+                <img id="modal-image" src="" alt="" style="max-width: 90%; max-height: 90%; object-fit: contain; border-radius: 8px;">
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        // Modal pour agrandir les photos
+        window.openPhotoModal = function(imageSrc, imageName) {
+            const modal = document.getElementById('photo-modal');
+            const modalImage = document.getElementById('modal-image');
+
+            modalImage.src = imageSrc;
+            modalImage.alt = imageName;
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closePhotoModal = function() {
+            const modal = document.getElementById('photo-modal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        };
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePhotoModal();
+            }
+        });
+    </script>
+{% endblock %}

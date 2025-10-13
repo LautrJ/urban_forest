@@ -25,13 +25,13 @@ class TreeType
     private ?float $maxCarbonStorage = null;
 
     #[ORM\Column(nullable: true)]
-    private ?float $carbonGrowthCoefficient = null;
+    private ?int $carbonGrowthK = null;
 
     #[ORM\Column(nullable: true)]
     private ?float $maxCoolZone = null;
 
     #[ORM\Column(nullable: true)]
-    private ?float $coolZoneGrowthCoefficient = null;
+    private ?int $coolZoneGrowthK = null;
 
     #[ORM\Column(nullable: true)]
     private ?int $maturityAge = null;
@@ -94,14 +94,14 @@ class TreeType
         return $this;
     }
 
-    public function getCarbonGrowthCoefficient(): ?float
+    public function getCarbonGrowthK(): ?float
     {
-        return $this->carbonGrowthCoefficient;
+        return $this->carbonGrowthK;
     }
 
-    public function setCarbonGrowthCoefficient(?float $carbonGrowthCoefficient): static
+    public function setCarbonGrowthK(?float $carbonGrowthK): static
     {
-        $this->carbonGrowthCoefficient = $carbonGrowthCoefficient;
+        $this->carbonGrowthK = $carbonGrowthK;
 
         return $this;
     }
@@ -118,14 +118,14 @@ class TreeType
         return $this;
     }
 
-    public function getCoolZoneGrowthCoefficient(): ?float
+    public function getCoolZoneGrowthK(): ?float
     {
-        return $this->coolZoneGrowthCoefficient;
+        return $this->coolZoneGrowthK;
     }
 
-    public function setCoolZoneGrowthCoefficient(?float $coolZoneGrowthCoefficient): static
+    public function setCoolZoneGrowthK(?float $coolZoneGrowthK): static
     {
-        $this->coolZoneGrowthCoefficient = $coolZoneGrowthCoefficient;
+        $this->coolZoneGrowthK = $coolZoneGrowthK;
 
         return $this;
     }

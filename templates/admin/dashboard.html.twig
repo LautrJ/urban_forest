@@ -1,0 +1,211 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard Administration{% endblock %}
+
+{% block body %}
+    <div class="dashboard-header">
+        <h1>🛡️ Dashboard Administration</h1>
+        <p>Gestion des demandes de recensement d'arbres</p>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Total demandes</div>
+            <div class="stat-value">{{ stats.total }}</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">En attente</div>
+            <div class="stat-value" style="color: #856404;">{{ stats.pending }}</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Validées</div>
+            <div class="stat-value" style="color: var(--forest-light);">{{ stats.validated }}</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Refusées</div>
+            <div class="stat-value" style="color: #dc3545;">{{ stats.rejected }}</div>
+        </div>
+    </div>
+
+    {# Actions rapides pour ADMIN uniquement #}
+    {% if is_granted('ROLE_ADMIN') %}
+        <div class="section-header" style="margin-top: 2rem;">
+            <h2>⚙️ Actions administrateur</h2>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+            <a href="{{ path('app_admin_agents_list') }}" class="btn btn-primary" style="padding: 1rem; text-align: center; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                <span style="font-size: 1.5rem;">👥</span>
+                <span>Gérer les agents</span>
+            </a>
+        </div>
+    {% endif %}
+
+    <div class="accordion-section">
+        <button class="accordion-header" onclick="toggleAccordion('requests')">
+            <div class="accordion-title">
+                <span class="chevron" id="chevron-requests">▼</span>
+                <h2>Demandes citoyens en attente ({{ stats.pending }})</h2>
+            </div>
+        </button>
+
+        <div class="accordion-content" id="content-requests">
+            {% if pendingRequests is empty %}
+                <div class="no-requests">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v6l4 2"/>
+                    </svg>
+                    <p>Aucune demande en attente pour le moment</p>
+                </div>
+            {% else %}
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Citoyen</th>
+                        <th>Essence proposée</th>
+                        <th>Âge estimé</th>
+                        <th>RDV</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for request in pendingRequests %}
+                        <tr>
+                            <td>{{ request.createdAt|date('d/m/Y H:i') }}</td>
+                            <td>
+                                <strong>{{ request.citizen.name }}</strong><br>
+                                <small style="color: #666;">{{ request.citizen.email }}</small>
+                            </td>
+                            <td>
+                                {% if request.proposedTreeType %}
+                                    {{ request.proposedTreeType.commonName }}
+                                {% else %}
+                                    <em style="color: #999;">À identifier</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if request.estimatedAge %}
+                                    {{ request.estimatedAge }} ans
+                                {% else %}
+                                    <em style="color: #999;">Non précisé</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if request.requestedAppointmentDate %}
+                                    <strong>{{ request.requestedAppointmentDate|date('d/m/Y') }}</strong><br>
+                                    <small style="color: #666;">à {{ request.requestedAppointmentDate|date('H:i') }}</small>
+                                {% else %}
+                                    <em style="color: #999;">Aucune date</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ path('app_admin_request_process', {id: request.id}) }}" class="btn-action btn-view">Traiter</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="accordion-section">
+        <button class="accordion-header" onclick="toggleAccordion('trees')">
+            <div class="accordion-title">
+                <span class="chevron" id="chevron-trees">▶</span>
+                <h2>Arbres recensés ({{ trees|length }})</h2>
+            </div>
+            <a href="{{ path('app_admin_tree_create') }}" class="btn-action btn-view" onclick="event.stopPropagation()">+ Recenser un arbre</a>
+        </button>
+
+        <div class="accordion-content collapsed" id="content-trees">
+            {% if trees is empty %}
+                <div class="no-requests">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor" color="var(--forest-light)">
+                        <rect x="10" y="16" width="4" height="6"/>
+                        <path d="M12 2 L7 10 H17 Z"/>
+                        <path d="M12 8 L6 14 H18 Z"/>
+                        <path d="M12 12 L5 18 H19 Z"/>
+                    </svg>
+                    <p>Aucun arbre recensé pour le moment</p>
+                </div>
+            {% else %}
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Essence</th>
+                        <th>Statut</th>
+                        <th>Âge</th>
+                        <th>Photos</th>
+                        <th>Contributeur</th>
+                        <th>Date d'ajout</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for tree in trees %}
+                        <tr>
+                            <td>
+                                <strong>{{ tree.treeType.commonName }}</strong><br>
+                                <small><em>{{ tree.treeType.scientificName }}</em></small>
+                            </td>
+                            <td>
+                                <span class="badge badge-success">{{ tree.status.label }}</span>
+                            </td>
+                            <td>
+                                {% if tree.age %}
+                                    {{ tree.age }} ans
+                                {% else %}
+                                    <em style="color: #999;">Non précisé</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if tree.photos|length > 0 %}
+                                    <div style="display: flex; gap: 0.25rem; align-items: center;">
+                                        <img src="{{ tree.photos[0].webPath }}"
+                                             alt="Photo"
+                                             style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 2px solid var(--forest-light);">
+                                        {% if tree.photos|length > 1 %}
+                                            <span style="font-size: 0.85rem; color: #666;">+{{ tree.photos|length - 1 }}</span>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <span style="color: #999; font-size: 0.85rem;">Aucune</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if tree.contributor %}
+                                    {{ tree.contributor.name }}
+                                {% else %}
+                                    <em style="color: #999;">Municipalité</em>
+                                {% endif %}
+                            </td>
+                            <td>{{ tree.createdAt|date('d/m/Y') }}</td>
+                            <td>
+                                <a href="{{ path('app_map', {treeId: tree.id}) }}" class="btn-action btn-view">Voir sur la carte</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        function toggleAccordion(section) {
+            const content = document.getElementById('content-' + section);
+            const chevron = document.getElementById('chevron-' + section);
+
+            content.classList.toggle('collapsed');
+            chevron.classList.toggle('rotated');
+        }
+    </script>
+{% endblock %}

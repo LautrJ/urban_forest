@@ -1,28 +1,204 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Hello HomeController!{% endblock %}
+{% block title %}La Forêt Urbaine - Recensement citoyen{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
 
 {% block body %}
-<style>
-    .example-wrapper { margin: 1em auto; max-width: 800px; width: 95%; font: 18px/1.5 sans-serif; }
-    .example-wrapper code { background: #F5F5F5; padding: 2px 6px; }
-</style>
+    {# Hero Section #}
+    <div class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">🌳 La Forêt Urbaine</h1>
+            <p class="hero-subtitle">Recensement participatif des arbres de votre commune</p>
+            <p class="hero-description">
+                Contribuez à la préservation de notre patrimoine naturel en recensant les arbres de votre quartier
+            </p>
 
-<div class="example-wrapper">
-    <h1>Hello {{ controller_name }}! ✅</h1>
+            <div class="hero-actions">
+                {% if is_granted('IS_AUTHENTICATED_FULLY') %}
+                    <a href="{{ path('app_map') }}" class="btn-hero btn-primary">
+                        🗺️ Explorer la carte
+                    </a>
+                    {% if is_granted('ROLE_USER') and not is_granted('ROLE_AGENT') %}
+                        <a href="{{ path('app_request_new') }}" class="btn-hero btn-secondary">
+                            ➕ Recenser un arbre
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <a href="{{ path('app_register') }}" class="btn-hero btn-primary">
+                        🌱 Rejoindre le projet
+                    </a>
+                    <a href="{{ path('app_login') }}" class="btn-hero btn-secondary">
+                        Se connecter
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 
-    {% if is_granted('ROLE_ADMIN') %}
-        <p>Tu es administrateur</p>
-    {% elseif is_granted('ROLE_AGENT') %}
-        <p>Tu es agent</p>
-    {% else %}
-        <p>Tu es citoyen</p>
+    {# Stats globales #}
+    <div class="home-stats-section">
+        <h2 class="section-title">📊 Impact environnemental</h2>
+
+        <div class="home-stats-grid">
+            <div class="home-stat-card">
+                <div class="stat-icon">🌳</div>
+                <div class="stat-value">{{ totalTrees }}</div>
+                <div class="stat-label">Arbres recensés</div>
+            </div>
+
+            <div class="home-stat-card">
+                <div class="stat-icon">💨</div>
+                <div class="stat-value">{{ totalCO2|number_format(0, ',', ' ') }} kg</div>
+                <div class="stat-label">CO₂ capturé par an</div>
+            </div>
+
+            <div class="home-stat-card">
+                <div class="stat-icon">❄️</div>
+                <div class="stat-value">{{ averageCoolZone|number_format(1) }} m</div>
+                <div class="stat-label">Zone de fraîcheur moyenne</div>
+            </div>
+
+            <div class="home-stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-value">{{ totalContributors }}</div>
+                <div class="stat-label">Citoyens contributeurs</div>
+            </div>
+        </div>
+    </div>
+
+    {# Carte des arbres #}
+    <div class="home-map-section">
+        <h2 class="section-title">🗺️ Carte des arbres urbains</h2>
+        <p class="section-description">
+            Découvrez les arbres recensés dans votre commune et leur impact environnemental
+        </p>
+
+        <div id="home-map"></div>
+
+        <div style="text-align: center; margin-top: 1.5rem;">
+            <a href="{{ path('app_map') }}" class="btn btn-primary" style="padding: 1rem 2rem; font-size: 1.1rem;">
+                Voir la carte complète
+            </a>
+        </div>
+    </div>
+
+    {# Section comment ça marche (pour visiteurs non connectés) #}
+    {% if not is_granted('IS_AUTHENTICATED_FULLY') %}
+        <div class="how-it-works-section">
+            <h2 class="section-title">🤔 Comment ça marche ?</h2>
+
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <h3>Inscrivez-vous</h3>
+                    <p>Créez votre compte citoyen gratuitement</p>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <h3>Signalez un arbre</h3>
+                    <p>Localisez et décrivez les arbres de votre quartier</p>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <h3>Validation</h3>
+                    <p>Un agent municipal valide votre contribution</p>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-number">4</div>
+                    <h3>Impact mesuré</h3>
+                    <p>Découvrez l'impact environnemental calculé</p>
+                </div>
+            </div>
+        </div>
     {% endif %}
+{% endblock %}
 
-    This friendly message is coming from:
-    <ul>
-        <li>Your controller at <code>/var/www/html/src/Controller/HomeController.php</code></li>
-        <li>Your template at <code>/var/www/html/templates/home/index.html.twig</code></li>
-    </ul>
-</div>
+{% block javascripts %}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('home-map').setView([48.8566, 2.3522], 12);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 18
+        }).addTo(map);
+
+        const treesData = {{ treesData|json_encode|raw }};
+
+        function createTreeIcon(statusCode) {
+            let color, borderColor;
+
+            switch(statusCode) {
+                case 'supprime':
+                    color = '#6c757d';
+                    borderColor = '#495057';
+                    break;
+                case 'en_projet':
+                    color = '#ffc107';
+                    borderColor = '#e0a800';
+                    break;
+                case 'plante':
+                case 'valide':
+                default:
+                    color = 'var(--forest-light)';
+                    borderColor = '#1a4d2e';
+            }
+
+            return L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background-color: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid ${borderColor}; display: flex; align-items: center; justify-content: center; font-size: 14px;">🌳</div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12],
+                popupAnchor: [0, -12]
+            });
+        }
+
+        treesData.forEach(tree => {
+            const marker = L.marker([tree.latitude, tree.longitude], {
+                icon: createTreeIcon(tree.statusCode)
+            });
+
+            let photoHTML = '';
+            if (tree.photos && tree.photos.length > 0) {
+                photoHTML = `
+                    <div style="margin-bottom: 0.5rem;">
+                        <img src="${tree.photos[0]}"
+                             alt="Photo"
+                             style="width: 100%; height: 120px; object-fit: cover; border-radius: 6px;">
+                    </div>
+                `;
+                    }
+
+                    marker.bindPopup(`
+                <div style="min-width: 180px;">
+                    ${photoHTML}
+                    <strong style="color: var(--forest-dark);">${tree.commonName}</strong><br>
+                    <small><em>${tree.scientificName}</em></small><br>
+                    <div style="margin-top: 0.5rem; font-size: 0.85rem;">
+                        🌱 ${tree.age || '?'} ans<br>
+                        💨 ${tree.carbonStorage} kg CO₂/an
+                    </div>
+                </div>
+            `);
+
+            marker.addTo(map);
+        });
+
+        // Centrer sur les arbres si disponibles
+        if (treesData.length > 0) {
+            const bounds = L.latLngBounds(treesData.map(t => [t.latitude, t.longitude]));
+            map.fitBounds(bounds, { padding: [50, 50] });
+        } else if (navigator.geolocation) {
+            // Sinon géolocaliser l'utilisateur
+            navigator.geolocation.getCurrentPosition(function(position) {
+                map.setView([position.coords.latitude, position.coords.longitude], 13);
+            });
+        }
+    </script>
 {% endblock %}

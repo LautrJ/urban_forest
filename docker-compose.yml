@@ -35,7 +35,8 @@ services:
       - "8000:8000"
     volumes:
       - .:/var/www/html
-      - ./var:/var/www/html/var
+      - symfony_var_cache:/var/www/html/var/cache
+      - symfony_vendor:/var/www/html/vendor
     networks:
       - urban_forest_network
     restart: unless-stopped
@@ -56,6 +57,8 @@ services:
 # Volumes pour la persistance des données
 volumes:
   postgres_data:
+  symfony_var_cache:
+  symfony_vendor:
 
 # Réseau privé pour les communications inter-conteneurs
 networks:

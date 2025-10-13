@@ -1,19 +1,73 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Register{% endblock %}
+{% block title %}Inscription - La Forêt Urbaine{% endblock %}
 
 {% block body %}
-    <h1>Register</h1>
+    <div class="form-container" style="max-width: 500px;">
+        <div class="form-header">
+            <h1>🌱 Créer un compte</h1>
+            <p>Rejoignez le recensement citoyen des arbres urbains</p>
+        </div>
 
-    {{ form_errors(registrationForm) }}
+        {% if registrationForm.vars.errors|length > 0 %}
+            <div class="alert alert-error">
+                {{ form_errors(registrationForm) }}
+            </div>
+        {% endif %}
 
-    {{ form_start(registrationForm) }}
-        {{ form_row(registrationForm.email) }}
-        {{ form_row(registrationForm.plainPassword, {
-            label: 'Password'
-        }) }}
-        {{ form_row(registrationForm.agreeTerms) }}
+        {{ form_start(registrationForm) }}
 
-        <button type="submit" class="btn">Register</button>
-    {{ form_end(registrationForm) }}
+        <div class="form-group">
+            {{ form_label(registrationForm.name, 'Nom complet') }}
+            {{ form_widget(registrationForm.name, {
+                'attr': {
+                    'class': 'form-control',
+                    'placeholder': 'Jean Dupont'
+                }
+            }) }}
+            {{ form_errors(registrationForm.name) }}
+        </div>
+
+        <div class="form-group">
+            {{ form_label(registrationForm.email, 'Adresse email') }}
+            {{ form_widget(registrationForm.email, {
+                'attr': {
+                    'class': 'form-control',
+                    'placeholder': 'votre.email@exemple.fr'
+                }
+            }) }}
+            {{ form_errors(registrationForm.email) }}
+        </div>
+
+        <div class="form-group">
+            {{ form_label(registrationForm.plainPassword, 'Mot de passe') }}
+            {{ form_widget(registrationForm.plainPassword, {
+                'attr': {
+                    'class': 'form-control',
+                    'placeholder': 'Minimum 6 caractères'
+                }
+            }) }}
+            {{ form_errors(registrationForm.plainPassword) }}
+            <small class="help-text">Choisissez un mot de passe d'au moins 6 caractères.</small>
+        </div>
+
+        <div class="form-check" style="margin-bottom: 1.5rem;">
+            {{ form_widget(registrationForm.agreeTerms) }}
+            {{ form_label(registrationForm.agreeTerms, 'J\'accepte les conditions d\'utilisation') }}
+            {{ form_errors(registrationForm.agreeTerms) }}
+        </div>
+
+        <button type="submit" class="btn-submit">
+            Créer mon compte
+        </button>
+
+        {{ form_end(registrationForm) }}
+
+        <div style="text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #ddd;">
+            <p style="color: #666;">Vous avez déjà un compte ?</p>
+            <a href="{{ path('app_login') }}" class="btn btn-secondary" style="display: inline-block; margin-top: 0.5rem;">
+                Se connecter
+            </a>
+        </div>
+    </div>
 {% endblock %}

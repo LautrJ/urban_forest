@@ -1,0 +1,152 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouvelle demande de recensement{% endblock %}
+
+{% block body %}
+    <div class="form-container">
+        <div class="form-header">
+            <h1>Nouvelle demande de recensement</h1>
+            <p>Faites recenser un arbre de votre propriété dans le patrimoine arboré de votre commune</p>
+        </div>
+
+        <div id="location-status" class="location-info loading">
+            <strong>📍 Récupération de votre position...</strong>
+            <p class="help-text">Veuillez autoriser l'accès à votre localisation pour continuer</p>
+        </div>
+
+        {{ form_start(form, {'attr': {'id': 'tree-request-form'}}) }}
+
+        <div class="form-group">
+            {{ form_label(form.proposedTreeType) }}
+            {{ form_widget(form.proposedTreeType, {'attr': {'class': 'form-select'}}) }}
+            <div class="help-text">Si vous ne connaissez pas l'essence, laissez ce champ vide. Un agent l'identifiera.</div>
+            {{ form_errors(form.proposedTreeType) }}
+        </div>
+
+        <div class="form-group">
+            {{ form_label(form.estimatedAge) }}
+            {{ form_widget(form.estimatedAge, {'attr': {'class': 'form-control'}}) }}
+            <div class="help-text">Estimation approximative, ce n'est pas grave si vous ne savez pas</div>
+            {{ form_errors(form.estimatedAge) }}
+        </div>
+
+        <div class="form-group">
+            {{ form_label(form.description) }}
+            {{ form_widget(form.description, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.description) }}
+        </div>
+
+        <div class="form-group">
+            {{ form_row(form.requestedAppointmentDate) }}
+        </div>
+
+        <div class="form-group">
+            {{ form_label(form.photoFiles) }}
+            {{ form_widget(form.photoFiles, {'attr': {'id': 'photo-input'}}) }}
+            {{ form_help(form.photoFiles) }}
+            {{ form_errors(form.photoFiles) }}
+
+            <div id="photo-preview" class="photo-preview"></div>
+        </div>
+
+        {{ form_widget(form.latitude) }}
+        {{ form_widget(form.longitude) }}
+
+        <button type="submit" class="btn-submit" id="submit-btn" disabled>
+            Envoyer la demande
+        </button>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const locationStatus = document.getElementById('location-status');
+            const submitBtn = document.getElementById('submit-btn');
+            const latitudeInput = document.getElementById('tree_request_latitude');
+            const longitudeInput = document.getElementById('tree_request_longitude');
+
+            if (!navigator.geolocation) {
+                locationStatus.className = 'location-info error';
+                locationStatus.innerHTML = '<strong>❌ Géolocalisation non supportée</strong><p class="help-text">Votre navigateur ne supporte pas la géolocalisation</p>';
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    latitudeInput.value = lat;
+                    longitudeInput.value = lng;
+
+                    locationStatus.className = 'location-info';
+                    locationStatus.innerHTML = '<strong>✅ Position obtenue avec succès</strong><p class="help-text">Coordonnées : ' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '</p>';
+
+                    submitBtn.disabled = false;
+                },
+                function(error) {
+                    let errorMessage = '';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = 'Vous avez refusé l\'accès à votre position';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = 'Position non disponible';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = 'La demande a expiré';
+                            break;
+                        default:
+                            errorMessage = 'Erreur inconnue';
+                    }
+
+                    locationStatus.className = 'location-info error';
+                    locationStatus.innerHTML = '<strong>❌ Impossible d\'obtenir votre position</strong><p class="help-text">' + errorMessage + '. Veuillez autoriser l\'accès à votre localisation.</p>';
+                }
+            );
+
+            const photoInput = document.getElementById('tree_request_photoFiles');
+            const photoPreview = document.getElementById('photo-preview');
+
+            if (photoInput && photoPreview) {
+                photoInput.addEventListener('change', function(e) {
+                    photoPreview.innerHTML = '';
+                    const files = Array.from(e.target.files);
+
+                    if (files.length > 5) {
+                        alert('Maximum 5 photos autorisées');
+                        photoInput.value = '';
+                        return;
+                    }
+
+                    files.forEach((file, index) => {
+                        if (file.size > 5 * 1024 * 1024) {
+                            alert(`La photo "${file.name}" est trop volumineuse (max 5 Mo)`);
+                            return;
+                        }
+
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const imgWrapper = document.createElement('div');
+                            imgWrapper.className = 'photo-preview-item';
+
+                            const img = document.createElement('img');
+                            img.src = event.target.result;
+
+                            const badge = document.createElement('span');
+                            badge.className = 'photo-badge';
+                            badge.textContent = index === 0 ? '⭐ Photo principale' : `Photo ${index + 1}`;
+
+                            imgWrapper.appendChild(img);
+                            imgWrapper.appendChild(badge);
+                            photoPreview.appendChild(imgWrapper);
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                });
+            }
+        });
+    </script>
+{% endblock %}

@@ -28,6 +28,10 @@ class Photo
     #[ORM\Column]
     private ?int $size = null;
 
+    // ⭐ NOUVEAU : Photo principale
+    #[ORM\Column]
+    private ?bool $isPrimary = false;
+
     #[ORM\ManyToOne(inversedBy: 'photos')]
     private ?Tree $tree = null;
 
@@ -40,6 +44,12 @@ class Photo
 
     #[ORM\Column]
     private ?\DateTimeImmutable $createdAt = null;
+
+    public function __construct()
+    {
+        $this->createdAt = new \DateTimeImmutable();
+        $this->isPrimary = false;
+    }
 
     public function getId(): ?int
     {
@@ -106,6 +116,19 @@ class Photo
         return $this;
     }
 
+    // ⭐ NOUVEAU
+    public function isPrimary(): ?bool
+    {
+        return $this->isPrimary;
+    }
+
+    public function setIsPrimary(bool $isPrimary): static
+    {
+        $this->isPrimary = $isPrimary;
+
+        return $this;
+    }
+
     public function getTree(): ?Tree
     {
         return $this->tree;
@@ -152,5 +175,21 @@ class Photo
         $this->createdAt = $createdAt;
 
         return $this;
+    }
+
+    /**
+     * Retourne le chemin web complet vers la photo
+     */
+    public function getWebPath(): string
+    {
+        return '/uploads/' . $this->path;
+    }
+
+    /**
+     * Retourne le chemin absolu du fichier sur le serveur
+     */
+    public function getAbsolutePath(string $publicDir): string
+    {
+        return $publicDir . '/uploads/' . $this->path;
     }
 }

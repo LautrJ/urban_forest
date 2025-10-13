@@ -1,0 +1,476 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Carte des arbres{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block body %}
+    <div class="map-header">
+        <h1>🗺️ Carte des arbres urbains</h1>
+    </div>
+
+    <div class="map-filters">
+        <div class="filters-grid">
+            <div class="filter-section search-box">
+                <h3>Rechercher un lieu</h3>
+                <input
+                        type="text"
+                        id="search-input"
+                        placeholder="Ville, adresse..."
+                >
+                <button class="btn-search" onclick="searchLocation()">
+                    🔍 Rechercher
+                </button>
+                <button class="btn-locate" onclick="geolocateUser()">
+                    📍 Ma position
+                </button>
+            </div>
+
+            <div class="filter-section">
+                <h3>Filtres</h3>
+                <div class="filter-checkboxes">
+                    <label>
+                        <input type="checkbox" id="filter-trees" checked onchange="toggleLayer('trees')">
+                        <span>Arbres recensés ({{ treesCount }})</span>
+                    </label>
+
+                    {% if requestsCount > 0 %}
+                        <label>
+                            <input type="checkbox" id="filter-requests" checked onchange="toggleLayer('requests')">
+                            <span>Demandes en attente ({{ requestsCount }})</span>
+                        </label>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h3>Légende</h3>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <div class="legend-icon" style="background-color: var(--forest-light); border: 2px solid #1a4d2e;"></div>
+                        <span>Arbre planté/validé</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon" style="background-color: #ffc107; border: 2px solid #e0a800;"></div>
+                        <span>Arbre en projet</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon" style="background-color: #6c757d; border: 2px solid #495057;"></div>
+                        <span>Arbre supprimé</span>
+                    </div>
+                    {% if requests|length > 0 %}
+                        <div class="legend-item">
+                            <div class="legend-icon icon-request"></div>
+                            <span>Demande en attente</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="map-container">
+        <div id="map"></div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const treesData = {{ trees|raw }};
+        const requestsData = {{ requests|raw }};
+
+        const map = L.map('map').setView([48.8566, 2.3522], 13);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+
+                    const userIcon = L.divIcon({
+                        className: 'user-location-marker',
+                        html: '<div style="background-color: #4285f4; width: 18px; height: 18px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);"></div>',
+                        iconSize: [18, 18],
+                        iconAnchor: [9, 9]
+                    });
+
+                    L.marker([userLat, userLng], { icon: userIcon })
+                        .bindPopup('📍 Vous êtes ici')
+                        .addTo(map);
+
+                    if (treesData.length === 0 && requestsData.length === 0) {
+                        map.setView([userLat, userLng], 15);
+                    }
+                },
+                function(error) {
+                    console.log('Géolocalisation non disponible ou refusée');
+                }
+            );
+        }
+
+        const treesLayer = L.layerGroup().addTo(map);
+        const coolZonesLayer = L.layerGroup().addTo(map);
+        const requestsLayer = L.layerGroup().addTo(map);
+
+        function createTreeIcon(statusCode) {
+            let color, borderColor;
+
+            switch(statusCode) {
+                case 'supprime':
+                    color = '#6c757d';
+                    borderColor = '#495057';
+                    break;
+                case 'en_projet':
+                    color = '#ffc107';
+                    borderColor = '#e0a800';
+                    break;
+                case 'plante':
+                case 'valide':
+                default:
+                    color = 'var(--forest-light)';
+                    borderColor = '#1a4d2e';
+            }
+
+            return L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background-color: ${color}; width: 30px; height: 30px; border-radius: 50%; border: 3px solid ${borderColor}; display: flex; align-items: center; justify-content: center; font-size: 18px;">🌳</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15]
+            });
+        }
+
+        const requestIcon = L.divIcon({
+            className: 'custom-marker',
+            html: `<div style="background-color: #ffc107; width: 30px; height: 30px; border-radius: 50%; border: 3px solid #856404; display: flex; align-items: center; justify-content: center; font-size: 18px;">⏳</div>`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 15],
+            popupAnchor: [0, -15]
+        });
+
+        const treeCircles = {};
+        const treeOriginalRadius = {};
+
+        treesData.forEach(tree => {
+            const coolZoneRadius = tree.environmental.coolZoneRadius;
+
+            if (coolZoneRadius > 0) {
+                const circle = L.circle([tree.latitude, tree.longitude], {
+                    color: '#52b788',
+                    fillColor: '#52b788',
+                    fillOpacity: 0.15,
+                    radius: coolZoneRadius,
+                    weight: 2,
+                    opacity: 0.5
+                });
+
+                circle.addTo(coolZonesLayer);
+
+                treeCircles[tree.id] = circle;
+                treeOriginalRadius[tree.id] = coolZoneRadius;
+            }
+
+            const marker = L.marker([tree.latitude, tree.longitude], {
+                icon: createTreeIcon(tree.status.code)
+            });
+
+            const env = tree.environmental;
+
+            let carouselHTML = '';
+            if (tree.photos && tree.photos.length > 0) {
+                carouselHTML = `
+                    <div class="popup-carousel">
+                        <div class="popup-carousel-images" id="carousel-${tree.id}">
+                            ${tree.photos.map((photo, index) => `
+                                <img src="${photo.webPath}"
+                                     alt="${photo.originalName}"
+                                     class="popup-carousel-image ${index === 0 ? 'active' : ''}"
+                                     data-index="${index}">
+                            `).join('')}
+                        </div>
+                        ${tree.photos.length > 1 ? `
+                            <div class="popup-carousel-controls">
+                                <button class="popup-carousel-btn" onclick="changePhoto(${tree.id}, -1)">◀</button>
+                                <button class="popup-carousel-btn" onclick="changePhoto(${tree.id}, 1)">▶</button>
+                            </div>
+                            <div class="popup-carousel-indicators">
+                                ${tree.photos.map((_, index) => `
+                                    <span class="popup-carousel-dot ${index === 0 ? 'active' : ''}"
+                                          onclick="goToPhoto(${tree.id}, ${index})"
+                                          data-tree="${tree.id}"
+                                          data-index="${index}"></span>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
+            const popupContent = `
+                ${carouselHTML}
+                <div class="popup-header">${tree.treeType.commonName}</div>
+                <div class="popup-detail"><em>${tree.treeType.scientificName}</em></div>
+                ${tree.age ? `<div class="popup-detail"><strong>Âge :</strong> ${tree.age} ans${env.isMature ? ' ✓ (mature)' : ''}</div>` : ''}
+
+                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #ddd;">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--forest-dark);">📊 Impact environnemental</div>
+                    <div class="popup-detail">🌱 CO2 capturé : <strong>${env.carbonStorage} kg/an</strong></div>
+                    <div class="popup-detail">❄️ Zone fraîcheur : <strong>${env.coolZoneRadius}m de rayon</strong></div>
+                    ${env.maturityPercentage ? `<div class="popup-detail">📈 Maturité : <strong>${env.maturityPercentage}%</strong></div>` : ''}
+                    ${env.allergyPotential ? `<div class="popup-detail">🤧 Allergie : <strong>${env.allergyPotential}</strong></div>` : ''}
+                    ${env.resilience ? `<div class="popup-detail">💪 Résilience : <strong>${env.resilience}</strong></div>` : ''}
+                </div>
+
+                ${tree.status.code !== 'supprime' ? `
+                    <div class="timeline-section">
+                        <div class="timeline-title">
+                            📈 Évolution projetée
+                        </div>
+                        <div class="timeline-container">
+                            <div class="timeline-step" onclick="updateTreeCircle(${tree.id}, ${tree.projections.current.coolZoneRadius}, 'current')">
+                                <div class="timeline-icon">🌱</div>
+                                <div class="timeline-label">Aujourd'hui</div>
+                                <div class="timeline-age">${tree.projections.current.age} ans</div>
+                                <div class="timeline-value">
+                                    <strong>${Math.round(tree.projections.current.carbonStorage)}</strong> kg CO₂<br>
+                                    Zone: <strong>${Math.round(tree.projections.current.coolZoneRadius)}m</strong>
+                                </div>
+                            </div>
+
+                            <div class="timeline-step" onclick="updateTreeCircle(${tree.id}, ${tree.projections.plus5.coolZoneRadius}, 'plus5')">
+                                <div class="timeline-icon">🌿</div>
+                                <div class="timeline-label">+5 ans</div>
+                                <div class="timeline-age">${tree.projections.plus5.age} ans</div>
+                                <div class="timeline-value">
+                                    <strong>${Math.round(tree.projections.plus5.carbonStorage)}</strong> kg CO₂<br>
+                                    Zone: <strong>${Math.round(tree.projections.plus5.coolZoneRadius)}m</strong>
+                                </div>
+                            </div>
+
+                            <div class="timeline-step" onclick="updateTreeCircle(${tree.id}, ${tree.projections.plus10.coolZoneRadius}, 'plus10')">
+                                <div class="timeline-icon">🌳</div>
+                                <div class="timeline-label">+10 ans</div>
+                                <div class="timeline-age">${tree.projections.plus10.age} ans</div>
+                                <div class="timeline-value">
+                                    <strong>${Math.round(tree.projections.plus10.carbonStorage)}</strong> kg CO₂<br>
+                                    Zone: <strong>${Math.round(tree.projections.plus10.coolZoneRadius)}m</strong>
+                                </div>
+                            </div>
+
+                            ${tree.isMature ? `
+                                <div class="timeline-step" onclick="updateTreeCircle(${tree.id}, ${tree.projections.plus20.coolZoneRadius}, 'plus20')">
+                                    <div class="timeline-icon">🌲</div>
+                                    <div class="timeline-label">+20 ans</div>
+                                    <div class="timeline-age">${tree.projections.plus20.age} ans</div>
+                                    <div class="timeline-value">
+                                        <strong>${Math.round(tree.projections.plus20.carbonStorage)}</strong> kg CO₂<br>
+                                        Zone: <strong>${Math.round(tree.projections.plus20.coolZoneRadius)}m</strong>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="timeline-step" onclick="updateTreeCircle(${tree.id}, ${tree.projections.maturity.coolZoneRadius}, 'maturity')">
+                                    <div class="timeline-icon">🌲</div>
+                                    <div class="timeline-label">Maturité</div>
+                                    <div class="timeline-age">${tree.projections.maturity.age} ans</div>
+                                    <div class="timeline-value">
+                                        <strong>${Math.round(tree.projections.maturity.carbonStorage)}</strong> kg CO₂<br>
+                                        Zone: <strong>${Math.round(tree.projections.maturity.coolZoneRadius)}m</strong>
+                                    </div>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                ` : ''}
+
+                ${tree.contributor ? `<div class="popup-detail" style="margin-top: 0.5rem;">Recensé par : ${tree.contributor.name}</div>` : '<div class="popup-detail" style="margin-top: 0.5rem;">Recensé par : Municipalité</div>'}
+                <span class="popup-badge badge-${tree.status.code}">${tree.status.label}</span>
+            `;
+
+            marker.bindPopup(popupContent, {
+                maxWidth: 350,
+                minWidth: 300
+            });
+            marker.addTo(treesLayer);
+        });
+
+        window.updateTreeCircle = function(treeId, newRadius, step) {
+            const circle = treeCircles[treeId];
+            if (!circle) return;
+
+            circle.setRadius(newRadius);
+
+            circle.setStyle({
+                fillOpacity: 0.3,
+                weight: 3
+            });
+
+            setTimeout(() => {
+                circle.setStyle({
+                    fillOpacity: 0.15,
+                    weight: 2
+                });
+            }, 500);
+
+            document.querySelectorAll('.timeline-step').forEach(el => {
+                el.classList.remove('timeline-step-active');
+            });
+            event.target.closest('.timeline-step')?.classList.add('timeline-step-active');
+        };
+
+        window.changePhoto = function(treeId, direction) {
+            const carousel = document.getElementById('carousel-' + treeId);
+            if (!carousel) return;
+
+            const images = carousel.querySelectorAll('.popup-carousel-image');
+            const dots = document.querySelectorAll(`.popup-carousel-dot[data-tree="${treeId}"]`);
+
+            let currentIndex = 0;
+            images.forEach((img, index) => {
+                if (img.classList.contains('active')) {
+                    currentIndex = index;
+                }
+            });
+
+            let newIndex = currentIndex + direction;
+            if (newIndex < 0) newIndex = images.length - 1;
+            if (newIndex >= images.length) newIndex = 0;
+
+            images.forEach(img => img.classList.remove('active'));
+            images[newIndex].classList.add('active');
+
+            dots.forEach(dot => dot.classList.remove('active'));
+            if (dots[newIndex]) dots[newIndex].classList.add('active');
+        };
+
+        window.goToPhoto = function(treeId, index) {
+            const carousel = document.getElementById('carousel-' + treeId);
+            if (!carousel) return;
+
+            const images = carousel.querySelectorAll('.popup-carousel-image');
+            const dots = document.querySelectorAll(`.popup-carousel-dot[data-tree="${treeId}"]`);
+
+            images.forEach(img => img.classList.remove('active'));
+            if (images[index]) images[index].classList.add('active');
+
+            dots.forEach(dot => dot.classList.remove('active'));
+            if (dots[index]) dots[index].classList.add('active');
+        };
+
+        requestsData.forEach(request => {
+            const marker = L.marker([request.latitude, request.longitude], { icon: requestIcon });
+
+            const popupContent = `
+                <div class="popup-header">Demande de recensement</div>
+                ${request.proposedTreeType ? `<div class="popup-detail">${request.proposedTreeType.commonName}</div>` : '<div class="popup-detail"><em>Essence à identifier</em></div>'}
+                ${request.estimatedAge ? `<div class="popup-detail">Âge estimé : ${request.estimatedAge} ans</div>` : ''}
+                <div class="popup-detail">Par : ${request.citizen.name}</div>
+                <span class="popup-badge badge-pending">En attente de validation</span>
+            `;
+
+            marker.bindPopup(popupContent);
+            marker.addTo(requestsLayer);
+        });
+
+        const allMarkers = [...treesData, ...requestsData];
+        if (allMarkers.length > 0) {
+            const bounds = L.latLngBounds(
+                allMarkers.map(item => [item.latitude, item.longitude])
+            );
+            map.fitBounds(bounds, { padding: [50, 50] });
+        }
+
+        {% if focusedTreeId %}
+        const focusedTreeId = {{ focusedTreeId }};
+
+        const focusedTree = treesData.find(t => t.id === focusedTreeId);
+
+        if (focusedTree) {
+            map.setView([focusedTree.latitude, focusedTree.longitude], 17);
+
+            console.log('Centrage sur l\'arbre #' + focusedTreeId);
+        }
+        {% endif %}
+
+        function toggleLayer(layerType) {
+            if (layerType === 'trees') {
+                if (map.hasLayer(treesLayer)) {
+                    map.removeLayer(treesLayer);
+                } else {
+                    map.addLayer(treesLayer);
+                }
+            } else if (layerType === 'coolZones') {
+                if (map.hasLayer(coolZonesLayer)) {
+                    map.removeLayer(coolZonesLayer);
+                } else {
+                    map.addLayer(coolZonesLayer);
+                }
+            } else if (layerType === 'requests') {
+                if (map.hasLayer(requestsLayer)) {
+                    map.removeLayer(requestsLayer);
+                } else {
+                    map.addLayer(requestsLayer);
+                }
+            }
+        }
+
+        async function searchLocation() {
+            const query = document.getElementById('search-input').value;
+            if (!query) {
+                alert('Veuillez entrer un lieu à rechercher');
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                const data = await response.json();
+
+                if (data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lon = parseFloat(data[0].lon);
+                    map.setView([lat, lon], 14);
+
+                    L.marker([lat, lon])
+                        .bindPopup(`📍 ${data[0].display_name}`)
+                        .addTo(map)
+                        .openPopup();
+                } else {
+                    alert('Lieu non trouvé. Essayez avec un autre nom.');
+                }
+            } catch (error) {
+                alert('Erreur lors de la recherche. Veuillez réessayer.');
+            }
+        }
+
+        function geolocateUser() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        map.setView([lat, lng], 15);
+                    },
+                    function(error) {
+                        alert('Impossible d\'obtenir votre position. Veuillez autoriser la géolocalisation.');
+                    }
+                );
+            } else {
+                alert('La géolocalisation n\'est pas supportée par votre navigateur.');
+            }
+        }
+
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchLocation();
+            }
+        });
+    </script>
+{% endblock %}

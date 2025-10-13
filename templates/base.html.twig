@@ -1,17 +1,80 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>{% block title %}Welcome!{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
-        {% block stylesheets %}
-        {% endblock %}
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}La Forêt Urbaine{% endblock %}</title>
 
-        {% block javascripts %}
-            {% block importmap %}{{ importmap('app') }}{% endblock %}
-        {% endblock %}
-    </head>
-    <body>
-        {% block body %}{% endblock %}
-    </body>
+    <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    {% block stylesheets %}{% endblock %}
+</head>
+<body>
+<nav class="navbar">
+    <div class="navbar-container">
+        <a href="{{ path('app_home') }}" class="navbar-brand">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="10" y="16" width="4" height="6"/>
+                <path d="M12 2 L7 10 H17 Z"/>
+                <path d="M12 8 L6 14 H18 Z"/>
+                <path d="M12 12 L5 18 H19 Z"/>
+            </svg>
+            La Forêt Urbaine
+        </a>
+
+        <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
+            <span id="menu-icon">☰</span>
+        </button>
+
+        <ul class="navbar-nav" id="navbar-menu">
+            <li><a href="{{ path('app_home') }}" class="nav-link">Accueil</a></li>
+            <li><a href="{{ path('app_map') }}" class="nav-link">Carte</a></li>
+
+            {% if is_granted('IS_AUTHENTICATED_FULLY') %}
+                {% if is_granted('ROLE_USER') %}
+                    <li><a href="{{ path('app_request_list') }}" class="nav-link">Mes demandes</a></li>
+                {% endif %}
+
+                {% if is_granted('ROLE_AGENT') %}
+                    <li><a href="{{ path('app_admin_dashboard') }}" class="nav-link">Administration</a></li>
+                {% endif %}
+
+                <li>
+                    <span style="opacity: 0.8;">{{ app.user.name }}</span>
+                </li>
+                <li>
+                    <a href="{{ path('app_logout') }}" class="btn btn-secondary">Déconnexion</a>
+                </li>
+            {% else %}
+                <li><a href="{{ path('app_login') }}" class="btn btn-secondary">Connexion</a></li>
+                <li><a href="{{ path('app_register') }}" class="btn btn-primary">Inscription</a></li>
+            {% endif %}
+        </ul>
+    </div>
+</nav>
+
+<div class="container">
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success">{{ message }}</div>
+    {% endfor %}
+
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-error">{{ message }}</div>
+    {% endfor %}
+
+    {% block body %}{% endblock %}
+</div>
+
+<script>
+    function toggleMobileMenu() {
+        const menu = document.getElementById('navbar-menu');
+        const icon = document.getElementById('menu-icon');
+        menu.classList.toggle('open');
+        icon.textContent = menu.classList.contains('open') ? '✕' : '☰';
+    }
+</script>
+
+{% block javascripts %}{% endblock %}
+</body>
 </html>

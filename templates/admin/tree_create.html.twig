@@ -1,0 +1,200 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Recenser un arbre{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <a href="{{ path('app_admin_dashboard') }}" class="back-link">← Retour au dashboard</a>
+
+        <div class="form-container">
+            <div class="form-header">
+                <h1>🌳 Recenser un nouvel arbre</h1>
+                <p>Ajoutez un arbre directement au recensement communal</p>
+            </div>
+
+            {{ form_start(form) }}
+
+            <div class="location-selector">
+                <h3>📍 Localisation de l'arbre</h3>
+                <p class="help-text">Cliquez sur la carte pour placer l'arbre</p>
+
+                <div id="map-create" style="height: 400px; border-radius: 8px; margin-bottom: 1.5rem;"></div>
+
+                <div id="location-info" class="location-info" style="display: none;">
+                    <strong>Position sélectionnée :</strong><br>
+                    Latitude: <span id="display-lat">-</span> | Longitude: <span id="display-lng">-</span>
+                </div>
+            </div>
+
+            {{ form_widget(form.latitude) }}
+            {{ form_widget(form.longitude) }}
+            {{ form_errors(form.latitude) }}
+            {{ form_errors(form.longitude) }}
+
+            <div class="form-section">
+                <h3>📸 Photos de l'arbre</h3>
+
+                <div class="form-group">
+                    {{ form_label(form.photoFiles) }}
+                    {{ form_widget(form.photoFiles, {'attr': {'id': 'tree-photo-input'}}) }}
+                    {{ form_help(form.photoFiles) }}
+                    {{ form_errors(form.photoFiles) }}
+
+                    <div id="tree-photo-preview" class="photo-preview"></div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>🌳 Informations sur l'arbre</h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        {{ form_label(form.treeType) }}
+                        {{ form_widget(form.treeType) }}
+                        {{ form_errors(form.treeType) }}
+                    </div>
+
+                    <div class="form-group">
+                        {{ form_label(form.status) }}
+                        {{ form_widget(form.status) }}
+                        <small class="form-help">{{ form_help(form.status) }}</small>
+                        {{ form_errors(form.status) }}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        {{ form_label(form.age) }}
+                        {{ form_widget(form.age) }}
+                        {{ form_errors(form.age) }}
+                    </div>
+
+                    <div class="form-group">
+                        {{ form_label(form.plantationDate) }}
+                        {{ form_widget(form.plantationDate) }}
+                        {{ form_errors(form.plantationDate) }}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        {{ form_label(form.height) }}
+                        {{ form_widget(form.height) }}
+                        {{ form_errors(form.height) }}
+                    </div>
+
+                    <div class="form-group">
+                        {{ form_label(form.diameter) }}
+                        {{ form_widget(form.diameter) }}
+                        {{ form_errors(form.diameter) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-submit" id="submit-btn" disabled>
+                    ✅ Recenser l'arbre
+                </button>
+                <a href="{{ path('app_admin_dashboard') }}" class="btn btn-secondary" style="line-height: 3; text-align: center; flex: 1;">
+                    Annuler
+                </a>
+            </div>
+
+            {{ form_end(form) }}
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map-create').setView([48.8566, 2.3522], 13);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 20
+        }).addTo(map);
+
+        let marker = null;
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                map.setView([lat, lng], 15);
+            });
+        }
+
+        map.on('click', function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+
+            if (marker) {
+                map.removeLayer(marker);
+            }
+
+            marker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'custom-marker',
+                    html: '<div style="background-color: var(--forest-light); width: 30px; height: 30px; border-radius: 50%; border: 3px solid #1a4d2e; display: flex; align-items: center; justify-content: center; font-size: 18px;">🌳</div>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                })
+            }).addTo(map);
+
+            document.getElementById('create_tree_latitude').value = lat;
+            document.getElementById('create_tree_longitude').value = lng;
+
+            document.getElementById('display-lat').textContent = lat.toFixed(6);
+            document.getElementById('display-lng').textContent = lng.toFixed(6);
+            document.getElementById('location-info').style.display = 'block';
+
+            document.getElementById('submit-btn').disabled = false;
+        });
+
+        const treePhotoInput = document.getElementById('create_tree_photoFiles');
+        const treePhotoPreview = document.getElementById('tree-photo-preview');
+
+        if (treePhotoInput) {
+            treePhotoInput.addEventListener('change', function(e) {
+                treePhotoPreview.innerHTML = '';
+                const files = Array.from(e.target.files);
+
+                if (files.length > 5) {
+                    alert('Maximum 5 photos');
+                    treePhotoInput.value = '';
+                    return;
+                }
+
+                files.forEach((file, index) => {
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert(`Photo trop volumineuse: ${file.name}`);
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'photo-preview-item';
+
+                        const img = document.createElement('img');
+                        img.src = event.target.result;
+
+                        const badge = document.createElement('span');
+                        badge.className = 'photo-badge';
+                        badge.textContent = index === 0 ? '⭐ Photo principale' : `Photo ${index + 1}`;
+
+                        wrapper.appendChild(img);
+                        wrapper.appendChild(badge);
+                        treePhotoPreview.appendChild(wrapper);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+        }
+    </script>
+{% endblock %}

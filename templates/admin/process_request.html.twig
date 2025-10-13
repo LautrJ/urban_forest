@@ -1,0 +1,263 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Traiter la demande{% endblock %}
+
+{% block body %}
+    <div class="process-container">
+        <a href="{{ path('app_admin_dashboard') }}" class="back-link">← Retour au dashboard</a>
+
+        <div class="request-details">
+            <div class="request-header">
+                <h1>Validation de la demande de recensement</h1>
+                <p style="color: #666; margin: 0;">
+                    Soumise le {{ treeRequest.createdAt|date('d/m/Y à H:i') }}
+                    par {{ treeRequest.citizen.name }}
+                </p>
+            </div>
+
+            <div class="details-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Citoyen</div>
+                    <div class="detail-value">
+                        <strong>{{ treeRequest.citizen.name }}</strong><br>
+                        {{ treeRequest.citizen.email }}
+                    </div>
+                </div>
+
+                <div class="detail-item">
+                    <div class="detail-label">Date de rendez-vous proposée</div>
+                    <div class="detail-value">
+                        {% if treeRequest.requestedAppointmentDate %}
+                            📅 <strong>{{ treeRequest.requestedAppointmentDate|date('d/m/Y à H:i') }}</strong>
+                        {% else %}
+                            <em style="color: #999;">Aucune date proposée</em>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if treeRequest.description %}
+                <div class="detail-item" style="margin-top: 1rem;">
+                    <div class="detail-label">Description / Commentaires du citoyen</div>
+                    <div class="detail-value" style="padding: 1rem; background: #f8f9fa; border-radius: 4px;">
+                        {{ treeRequest.description }}
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if treeRequest.photos|length > 0 %}
+                <div class="detail-item" style="margin-top: 1.5rem;">
+                    <div class="detail-label">Photos fournies par le citoyen ({{ treeRequest.photos|length }})</div>
+                    <div class="photo-gallery" style="margin-top: 0.75rem;">
+                        {% for photo in treeRequest.photos %}
+                            <div class="photo-gallery-item" onclick="openPhotoModal('{{ photo.webPath }}', '{{ photo.originalName }}')">
+                                <img src="{{ photo.webPath }}"
+                                     alt="{{ photo.originalName }}"
+                                     style="cursor: pointer;">
+                                {% if photo.isPrimary %}
+                                    <span class="photo-primary-badge">⭐ Principale</span>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="actions-container">
+            <h2>📝 Compléter les informations et valider</h2>
+
+            {{ form_start(form, {'attr': {'class': 'validation-form'}}) }}
+
+            <div style="background: #e8f5e9; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem; border-left: 4px solid var(--forest-medium);">
+                💡 <strong>Information :</strong> Vous pouvez modifier les informations proposées par le citoyen et ajouter les données manquantes.
+            </div>
+
+            <div class="form-section">
+                <h3 style="color: var(--forest-dark); margin-bottom: 1rem;">🌳 Informations sur l'arbre</h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        {{ form_label(form.treeType) }}
+                        {{ form_widget(form.treeType) }}
+                        {{ form_errors(form.treeType) }}
+                    </div>
+
+                    <div class="form-group">
+                        {{ form_label(form.status) }}
+                        {{ form_widget(form.status) }}
+                        {{ form_help(form.status) }}
+                        {{ form_errors(form.status) }}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        {{ form_label(form.age) }}
+                        {{ form_widget(form.age) }}
+                        {{ form_errors(form.age) }}
+                    </div>
+
+                    <div class="form-group">
+                        {{ form_label(form.plantationDate) }}
+                        {{ form_widget(form.plantationDate) }}
+                        {{ form_errors(form.plantationDate) }}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        {{ form_label(form.height) }}
+                        {{ form_widget(form.height) }}
+                        {{ form_errors(form.height) }}
+                    </div>
+
+                    <div class="form-group">
+                        {{ form_label(form.diameter) }}
+                        {{ form_widget(form.diameter) }}
+                        {{ form_errors(form.diameter) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 style="color: var(--forest-dark); margin-bottom: 1rem;">📍 Localisation</h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        {{ form_label(form.latitude) }}
+                        {{ form_widget(form.latitude) }}
+                        {{ form_errors(form.latitude) }}
+                    </div>
+
+                    <div class="form-group">
+                        {{ form_label(form.longitude) }}
+                        {{ form_widget(form.longitude) }}
+                        {{ form_errors(form.longitude) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 style="color: var(--forest-dark); margin-bottom: 1rem;">📸 Gestion des photos</h3>
+
+                {% if treeRequest.photos|length > 0 %}
+                    <div style="margin-bottom: 1.5rem;">
+                        <strong>Photos fournies par le citoyen ({{ treeRequest.photos|length }}) :</strong>
+                        <div class="photo-gallery" style="margin-top: 0.75rem;">
+                            {% for photo in treeRequest.photos %}
+                                <div class="photo-gallery-item">
+                                    <img src="{{ photo.webPath }}" alt="{{ photo.originalName }}">
+                                    {% if photo.isPrimary %}
+                                        <span class="photo-primary-badge">⭐ Principale</span>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        {{ form_row(form.keepRequestPhotos) }}
+                    </div>
+                {% else %}
+                    <p style="color: #666; font-style: italic;">Aucune photo fournie par le citoyen.</p>
+                {% endif %}
+
+                <div class="form-group">
+                    {{ form_label(form.photoFiles) }}
+                    {{ form_widget(form.photoFiles, {'attr': {'id': 'agent-photo-input'}}) }}
+                    {{ form_help(form.photoFiles) }}
+                    {{ form_errors(form.photoFiles) }}
+
+                    {# Prévisualisation #}
+                    <div id="agent-photo-preview" class="photo-preview"></div>
+                </div>
+            </div>
+
+            <div class="form-actions" style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button type="submit" class="btn btn-validate" style="flex: 1;">
+                    ✅ Valider et créer l'arbre
+                </button>
+
+                <a href="{{ path('app_admin_dashboard') }}" class="btn btn-secondary" style="flex: 1; text-align: center; line-height: 2.5;">
+                    Annuler
+                </a>
+            </div>
+
+            {{ form_end(form) }}
+        </div>
+    </div>
+    <div id="photo-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; cursor: pointer;" onclick="closePhotoModal()">
+        <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 2rem;">
+            <button onclick="closePhotoModal()" style="position: absolute; top: 1rem; right: 1rem; background: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 1.5rem; cursor: pointer; z-index: 10000;">×</button>
+            <img id="modal-image" src="" alt="" style="max-width: 90%; max-height: 90%; object-fit: contain; border-radius: 8px;">
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        const agentPhotoInput = document.getElementById('agent-photo-input');
+        const agentPhotoPreview = document.getElementById('agent-photo-preview');
+
+        if (agentPhotoInput) {
+            agentPhotoInput.addEventListener('change', function(e) {
+                agentPhotoPreview.innerHTML = '';
+                const files = Array.from(e.target.files);
+
+                if (files.length > 5) {
+                    alert('Maximum 5 photos autorisées');
+                    agentPhotoInput.value = '';
+                    return;
+                }
+
+                files.forEach((file, index) => {
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert(`La photo "${file.name}" est trop volumineuse (max 5 Mo)`);
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const imgWrapper = document.createElement('div');
+                        imgWrapper.className = 'photo-preview-item';
+
+                        const img = document.createElement('img');
+                        img.src = event.target.result;
+
+                        const badge = document.createElement('span');
+                        badge.className = 'photo-badge';
+                        badge.textContent = `Photo ${index + 1}`;
+
+                        imgWrapper.appendChild(img);
+                        imgWrapper.appendChild(badge);
+                        agentPhotoPreview.appendChild(imgWrapper);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+        }
+
+        window.openPhotoModal = function(imageSrc, imageName) {
+            const modal = document.getElementById('photo-modal');
+            const modalImage = document.getElementById('modal-image');
+
+            modalImage.src = imageSrc;
+            modalImage.alt = imageName;
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closePhotoModal = function() {
+            const modal = document.getElementById('photo-modal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        };
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePhotoModal();
+            }
+        });
+    </script>
+{% endblock %}
