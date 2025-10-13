@@ -157,6 +157,9 @@
             popupAnchor: [0, -15]
         });
 
+        const treeCircles = {};
+        const treeOriginalRadius = {};
+
         treesData.forEach(tree => {
             const coolZoneRadius = tree.environmental.coolZoneRadius;
 
@@ -171,6 +174,9 @@
                 });
 
                 circle.addTo(coolZonesLayer);
+
+                treeCircles[tree.id] = circle;
+                treeOriginalRadius[tree.id] = coolZoneRadius;
             }
 
             const marker = L.marker([tree.latitude, tree.longitude], {
@@ -224,16 +230,101 @@
                     ${env.resilience ? `<div class="popup-detail">💪 Résilience : <strong>${env.resilience}</strong></div>` : ''}
                 </div>
 
+                ${tree.status.code !== 'supprime' ? `
+                    <div class="timeline-section">
+                        <div class="timeline-title">
+                            📈 Évolution projetée
+                        </div>
+                        <div class="timeline-container">
+                            <div class="timeline-step" onclick="updateTreeCircle(${tree.id}, ${tree.projections.current.coolZoneRadius}, 'current')">
+                                <div class="timeline-icon">🌱</div>
+                                <div class="timeline-label">Aujourd'hui</div>
+                                <div class="timeline-age">${tree.projections.current.age} ans</div>
+                                <div class="timeline-value">
+                                    <strong>${Math.round(tree.projections.current.carbonStorage)}</strong> kg CO₂<br>
+                                    Zone: <strong>${Math.round(tree.projections.current.coolZoneRadius)}m</strong>
+                                </div>
+                            </div>
+
+                            <div class="timeline-step" onclick="updateTreeCircle(${tree.id}, ${tree.projections.plus5.coolZoneRadius}, 'plus5')">
+                                <div class="timeline-icon">🌿</div>
+                                <div class="timeline-label">+5 ans</div>
+                                <div class="timeline-age">${tree.projections.plus5.age} ans</div>
+                                <div class="timeline-value">
+                                    <strong>${Math.round(tree.projections.plus5.carbonStorage)}</strong> kg CO₂<br>
+                                    Zone: <strong>${Math.round(tree.projections.plus5.coolZoneRadius)}m</strong>
+                                </div>
+                            </div>
+
+                            <div class="timeline-step" onclick="updateTreeCircle(${tree.id}, ${tree.projections.plus10.coolZoneRadius}, 'plus10')">
+                                <div class="timeline-icon">🌳</div>
+                                <div class="timeline-label">+10 ans</div>
+                                <div class="timeline-age">${tree.projections.plus10.age} ans</div>
+                                <div class="timeline-value">
+                                    <strong>${Math.round(tree.projections.plus10.carbonStorage)}</strong> kg CO₂<br>
+                                    Zone: <strong>${Math.round(tree.projections.plus10.coolZoneRadius)}m</strong>
+                                </div>
+                            </div>
+
+                            ${tree.isMature ? `
+                                <div class="timeline-step" onclick="updateTreeCircle(${tree.id}, ${tree.projections.plus20.coolZoneRadius}, 'plus20')">
+                                    <div class="timeline-icon">🌲</div>
+                                    <div class="timeline-label">+20 ans</div>
+                                    <div class="timeline-age">${tree.projections.plus20.age} ans</div>
+                                    <div class="timeline-value">
+                                        <strong>${Math.round(tree.projections.plus20.carbonStorage)}</strong> kg CO₂<br>
+                                        Zone: <strong>${Math.round(tree.projections.plus20.coolZoneRadius)}m</strong>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="timeline-step" onclick="updateTreeCircle(${tree.id}, ${tree.projections.maturity.coolZoneRadius}, 'maturity')">
+                                    <div class="timeline-icon">🌲</div>
+                                    <div class="timeline-label">Maturité</div>
+                                    <div class="timeline-age">${tree.projections.maturity.age} ans</div>
+                                    <div class="timeline-value">
+                                        <strong>${Math.round(tree.projections.maturity.carbonStorage)}</strong> kg CO₂<br>
+                                        Zone: <strong>${Math.round(tree.projections.maturity.coolZoneRadius)}m</strong>
+                                    </div>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                ` : ''}
+
                 ${tree.contributor ? `<div class="popup-detail" style="margin-top: 0.5rem;">Recensé par : ${tree.contributor.name}</div>` : '<div class="popup-detail" style="margin-top: 0.5rem;">Recensé par : Municipalité</div>'}
                 <span class="popup-badge badge-${tree.status.code}">${tree.status.label}</span>
             `;
 
             marker.bindPopup(popupContent, {
-                maxWidth: 300,
-                minWidth: 250
+                maxWidth: 350,
+                minWidth: 300
             });
             marker.addTo(treesLayer);
         });
+
+        window.updateTreeCircle = function(treeId, newRadius, step) {
+            const circle = treeCircles[treeId];
+            if (!circle) return;
+
+            circle.setRadius(newRadius);
+
+            circle.setStyle({
+                fillOpacity: 0.3,
+                weight: 3
+            });
+
+            setTimeout(() => {
+                circle.setStyle({
+                    fillOpacity: 0.15,
+                    weight: 2
+                });
+            }, 500);
+
+            document.querySelectorAll('.timeline-step').forEach(el => {
+                el.classList.remove('timeline-step-active');
+            });
+            event.target.closest('.timeline-step')?.classList.add('timeline-step-active');
+        };
 
         window.changePhoto = function(treeId, direction) {
             const carousel = document.getElementById('carousel-' + treeId);

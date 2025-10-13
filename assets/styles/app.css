@@ -709,8 +709,8 @@ tr:hover {
 
 .map-container {
     position: relative;
-    height: calc(100vh - 400px);
-    min-height: 500px;
+    height: calc(100vh - 350px);
+    min-height: 600px;
 }
 
 #map {
@@ -1509,4 +1509,128 @@ input[type="datetime-local"]:invalid {
 
 .popup-carousel-dot.active {
     background: var(--forest-medium);
+}
+
+.timeline-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 2px solid #ddd;
+}
+
+.timeline-title {
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--forest-dark);
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.timeline-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.timeline-step {
+    flex: 1;
+    text-align: center;
+    position: relative;
+}
+
+.timeline-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+    filter: grayscale(0);
+    transition: transform 0.2s;
+}
+
+.timeline-step:hover .timeline-icon {
+    transform: scale(1.2);
+}
+
+.timeline-age {
+    font-size: 0.7rem;
+    color: #666;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.timeline-label {
+    font-size: 0.65rem;
+    color: var(--forest-dark);
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.timeline-value {
+    font-size: 0.7rem;
+    color: #666;
+    line-height: 1.2;
+}
+
+.timeline-value strong {
+    color: var(--forest-medium);
+}
+
+.timeline-container::before {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 12%;
+    right: 12%;
+    height: 2px;
+    background: linear-gradient(to right, #52b788, #1a4d2e);
+    z-index: 0;
+}
+
+.timeline-step {
+    position: relative;
+    z-index: 1;
+}
+
+.timeline-mature-badge {
+    display: inline-block;
+    background: var(--forest-medium);
+    color: white;
+    font-size: 0.6rem;
+    padding: 0.15rem 0.35rem;
+    border-radius: 10px;
+    margin-top: 0.25rem;
+}
+
+@media (max-width: 400px) {
+    .timeline-container {
+        gap: 0.25rem;
+    }
+
+    .timeline-icon {
+        font-size: 1.2rem;
+    }
+
+    .timeline-age,
+    .timeline-label,
+    .timeline-value {
+        font-size: 0.6rem;
+    }
+}
+
+.timeline-step-active {
+    background: rgba(82, 183, 136, 0.2) !important;
+    border-radius: 8px;
+    transform: scale(1.05);
+}
+
+.timeline-step {
+    cursor: pointer;
+    transition: all 0.3s;
+    padding: 0.25rem;
+    border-radius: 8px;
+}
+
+.timeline-step:hover {
+    background: rgba(82, 183, 136, 0.1);
 }

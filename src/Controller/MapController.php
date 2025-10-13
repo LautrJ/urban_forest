@@ -55,6 +55,61 @@ class MapController extends AbstractController
                 ];
             }
 
+            $currentAge = $tree->getAge() ?? 0;
+            $maturityAge = $tree->getTreeType()->getMaturityAge() ?? 50;
+
+            if ($currentAge >= $maturityAge) {
+                $projections = [
+                    'current' => [
+                        'age' => $currentAge,
+                        'carbonStorage' => $tree->getCurrentCarbonStorage(),
+                        'coolZoneRadius' => $tree->getCurrentCoolZoneRadius(),
+                        'maturityPercentage' => $tree->getMaturityPercentage(),
+                    ],
+                    'plus5' => [
+                        'age' => $currentAge + 5,
+                        'carbonStorage' => $tree->getProjectedCarbonStorage($currentAge + 5),
+                        'coolZoneRadius' => $tree->getProjectedCoolZoneRadius($currentAge + 5),
+                    ],
+                    'plus10' => [
+                        'age' => $currentAge + 10,
+                        'carbonStorage' => $tree->getProjectedCarbonStorage($currentAge + 10),
+                        'coolZoneRadius' => $tree->getProjectedCoolZoneRadius($currentAge + 10),
+                    ],
+                    'plus20' => [
+                        'age' => $currentAge + 20,
+                        'carbonStorage' => $tree->getProjectedCarbonStorage($currentAge + 20),
+                        'coolZoneRadius' => $tree->getProjectedCoolZoneRadius($currentAge + 20),
+                    ],
+                ];
+            } else {
+                $projections = [
+                    'current' => [
+                        'age' => $currentAge,
+                        'carbonStorage' => $tree->getCurrentCarbonStorage(),
+                        'coolZoneRadius' => $tree->getCurrentCoolZoneRadius(),
+                        'maturityPercentage' => $tree->getMaturityPercentage(),
+                    ],
+                    'plus5' => [
+                        'age' => $currentAge + 5,
+                        'carbonStorage' => $tree->getProjectedCarbonStorage($currentAge + 5),
+                        'coolZoneRadius' => $tree->getProjectedCoolZoneRadius($currentAge + 5),
+                    ],
+                    'plus10' => [
+                        'age' => $currentAge + 10,
+                        'carbonStorage' => $tree->getProjectedCarbonStorage($currentAge + 10),
+                        'coolZoneRadius' => $tree->getProjectedCoolZoneRadius($currentAge + 10),
+                    ],
+                    'maturity' => [
+                        'age' => $maturityAge,
+                        'carbonStorage' => $tree->getProjectedCarbonStorage($maturityAge),
+                        'coolZoneRadius' => $tree->getProjectedCoolZoneRadius($maturityAge),
+                    ],
+                ];
+            }
+
+            $isMature = $currentAge >= $maturityAge;
+
             $treesData[] = [
                 'id' => $tree->getId(),
                 'latitude' => $tree->getLatitude(),
@@ -80,6 +135,8 @@ class MapController extends AbstractController
                     'resilience' => $tree->getTreeType()->getResilience(),
                 ],
                 'photos' => $photosData,
+                'projections' => $projections,
+                'isMature' => $isMature,
             ];
         }
 
