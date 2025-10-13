@@ -122,7 +122,6 @@
 {% block javascripts %}
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Initialiser la carte d'accueil
         const map = L.map('home-map').setView([48.8566, 2.3522], 12);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -130,23 +129,55 @@
             maxZoom: 18
         }).addTo(map);
 
-        // Charger les arbres via AJAX (simplifié pour l'exemple)
-        // Tu peux passer les données directement depuis le contrôleur si tu préfères
         const treesData = {{ treesData|json_encode|raw }};
 
-        const treeIcon = L.divIcon({
-            className: 'custom-marker',
-            html: '<div style="background-color: var(--forest-light); width: 24px; height: 24px; border-radius: 50%; border: 2px solid #1a4d2e; display: flex; align-items: center; justify-content: center; font-size: 14px;">🌳</div>',
-            iconSize: [24, 24],
-            iconAnchor: [12, 12],
-            popupAnchor: [0, -12]
-        });
+        function createTreeIcon(statusCode) {
+            let color, borderColor;
+
+            switch(statusCode) {
+                case 'supprime':
+                    color = '#6c757d';
+                    borderColor = '#495057';
+                    break;
+                case 'en_projet':
+                    color = '#ffc107';
+                    borderColor = '#e0a800';
+                    break;
+                case 'plante':
+                case 'valide':
+                default:
+                    color = 'var(--forest-light)';
+                    borderColor = '#1a4d2e';
+            }
+
+            return L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background-color: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid ${borderColor}; display: flex; align-items: center; justify-content: center; font-size: 14px;">🌳</div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12],
+                popupAnchor: [0, -12]
+            });
+        }
 
         treesData.forEach(tree => {
-            const marker = L.marker([tree.latitude, tree.longitude], { icon: treeIcon });
+            const marker = L.marker([tree.latitude, tree.longitude], {
+                icon: createTreeIcon(tree.statusCode)
+            });
 
-            marker.bindPopup(`
+            let photoHTML = '';
+            if (tree.photos && tree.photos.length > 0) {
+                photoHTML = `
+                    <div style="margin-bottom: 0.5rem;">
+                        <img src="${tree.photos[0]}"
+                             alt="Photo"
+                             style="width: 100%; height: 120px; object-fit: cover; border-radius: 6px;">
+                    </div>
+                `;
+                    }
+
+                    marker.bindPopup(`
                 <div style="min-width: 180px;">
+                    ${photoHTML}
                     <strong style="color: var(--forest-dark);">${tree.commonName}</strong><br>
                     <small><em>${tree.scientificName}</em></small><br>
                     <div style="margin-top: 0.5rem; font-size: 0.85rem;">

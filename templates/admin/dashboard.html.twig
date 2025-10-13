@@ -141,6 +141,7 @@
                         <th>Essence</th>
                         <th>Statut</th>
                         <th>Âge</th>
+                        <th>Photos</th>
                         <th>Contributeur</th>
                         <th>Date d'ajout</th>
                         <th>Actions</th>
@@ -161,6 +162,20 @@
                                     {{ tree.age }} ans
                                 {% else %}
                                     <em style="color: #999;">Non précisé</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if tree.photos|length > 0 %}
+                                    <div style="display: flex; gap: 0.25rem; align-items: center;">
+                                        <img src="{{ tree.photos[0].webPath }}"
+                                             alt="Photo"
+                                             style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 2px solid var(--forest-light);">
+                                        {% if tree.photos|length > 1 %}
+                                            <span style="font-size: 0.85rem; color: #666;">+{{ tree.photos|length - 1 }}</span>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <span style="color: #999; font-size: 0.85rem;">Aucune</span>
                                 {% endif %}
                             </td>
                             <td>

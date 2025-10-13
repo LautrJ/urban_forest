@@ -48,16 +48,14 @@
             {% if treeRequest.photos|length > 0 %}
                 <div class="detail-item" style="margin-top: 1.5rem;">
                     <div class="detail-label">Photos fournies par le citoyen ({{ treeRequest.photos|length }})</div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-top: 0.5rem;">
+                    <div class="photo-gallery" style="margin-top: 0.75rem;">
                         {% for photo in treeRequest.photos %}
-                            <div style="position: relative;">
+                            <div class="photo-gallery-item" onclick="openPhotoModal('{{ photo.webPath }}', '{{ photo.originalName }}')">
                                 <img src="{{ photo.webPath }}"
                                      alt="{{ photo.originalName }}"
-                                     style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                     style="cursor: pointer;">
                                 {% if photo.isPrimary %}
-                                    <span style="position: absolute; top: 5px; right: 5px; background: var(--forest-medium); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">
-                                        ⭐ Principale
-                                    </span>
+                                    <span class="photo-primary-badge">⭐ Principale</span>
                                 {% endif %}
                             </div>
                         {% endfor %}
@@ -189,6 +187,12 @@
             {{ form_end(form) }}
         </div>
     </div>
+    <div id="photo-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; cursor: pointer;" onclick="closePhotoModal()">
+        <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 2rem;">
+            <button onclick="closePhotoModal()" style="position: absolute; top: 1rem; right: 1rem; background: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 1.5rem; cursor: pointer; z-index: 10000;">×</button>
+            <img id="modal-image" src="" alt="" style="max-width: 90%; max-height: 90%; object-fit: contain; border-radius: 8px;">
+        </div>
+    </div>
 {% endblock %}
 
 {% block javascripts %}
@@ -233,5 +237,27 @@
                 });
             });
         }
+
+        window.openPhotoModal = function(imageSrc, imageName) {
+            const modal = document.getElementById('photo-modal');
+            const modalImage = document.getElementById('modal-image');
+
+            modalImage.src = imageSrc;
+            modalImage.alt = imageName;
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closePhotoModal = function() {
+            const modal = document.getElementById('photo-modal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        };
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePhotoModal();
+            }
+        });
     </script>
 {% endblock %}

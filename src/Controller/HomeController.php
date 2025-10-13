@@ -15,10 +15,8 @@ final class HomeController extends AbstractController
         TreeRepository $treeRepository,
         UserRepository $userRepository
     ): Response {
-        // Récupérer tous les arbres validés
         $trees = $treeRepository->findAll();
 
-        // Calculer les stats globales
         $totalTrees = count($trees);
         $totalCO2 = 0;
         $totalCoolZone = 0;
@@ -35,15 +33,18 @@ final class HomeController extends AbstractController
 
         $averageCoolZone = $treeCount > 0 ? $totalCoolZone / $treeCount : 0;
 
-        // Compter les contributeurs uniques
         $contributors = $userRepository->createQueryBuilder('u')
             ->select('COUNT(DISTINCT u.id)')
             ->where('u.trees IS NOT EMPTY')
             ->getQuery()
             ->getSingleScalarResult();
 
-        // Préparer les données pour la carte
-        $treesData = array_map(function($tree) {
+        $treesData = array_values(array_map(function($tree) {
+            $photos = [];
+            foreach ($tree->getPhotos() as $photo) {
+                $photos[] = $photo->getWebPath();
+            }
+
             return [
                 'latitude' => $tree->getLatitude(),
                 'longitude' => $tree->getLongitude(),
@@ -51,8 +52,10 @@ final class HomeController extends AbstractController
                 'scientificName' => $tree->getTreeType()->getScientificName(),
                 'age' => $tree->getAge(),
                 'carbonStorage' => round($tree->getCurrentCarbonStorage(), 1),
+                'photos' => $photos,
+                'statusCode' => $tree->getStatus()->getName(),
             ];
-        }, $trees);
+        }, $trees));
 
         return $this->render('home/index.html.twig', [
             'totalTrees' => $totalTrees,

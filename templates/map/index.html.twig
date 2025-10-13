@@ -49,8 +49,16 @@
                 <h3>Légende</h3>
                 <div class="legend-items">
                     <div class="legend-item">
-                        <div class="legend-icon icon-tree"></div>
-                        <span>Arbre recensé</span>
+                        <div class="legend-icon" style="background-color: var(--forest-light); border: 2px solid #1a4d2e;"></div>
+                        <span>Arbre planté/validé</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon" style="background-color: #ffc107; border: 2px solid #e0a800;"></div>
+                        <span>Arbre en projet</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon" style="background-color: #6c757d; border: 2px solid #495057;"></div>
+                        <span>Arbre supprimé</span>
                     </div>
                     {% if requests|length > 0 %}
                         <div class="legend-item">
@@ -113,13 +121,33 @@
         const coolZonesLayer = L.layerGroup().addTo(map);
         const requestsLayer = L.layerGroup().addTo(map);
 
-        const treeIcon = L.divIcon({
-            className: 'custom-marker',
-            html: `<div style="background-color: var(--forest-light); width: 30px; height: 30px; border-radius: 50%; border: 3px solid #1a4d2e; display: flex; align-items: center; justify-content: center; font-size: 18px;">🌳</div>`,
-            iconSize: [30, 30],
-            iconAnchor: [15, 15],
-            popupAnchor: [0, -15]
-        });
+        function createTreeIcon(statusCode) {
+            let color, borderColor;
+
+            switch(statusCode) {
+                case 'supprime':
+                    color = '#6c757d';
+                    borderColor = '#495057';
+                    break;
+                case 'en_projet':
+                    color = '#ffc107';
+                    borderColor = '#e0a800';
+                    break;
+                case 'plante':
+                case 'valide':
+                default:
+                    color = 'var(--forest-light)';
+                    borderColor = '#1a4d2e';
+            }
+
+            return L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background-color: ${color}; width: 30px; height: 30px; border-radius: 50%; border: 3px solid ${borderColor}; display: flex; align-items: center; justify-content: center; font-size: 18px;">🌳</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15]
+            });
+        }
 
         const requestIcon = L.divIcon({
             className: 'custom-marker',
@@ -145,10 +173,44 @@
                 circle.addTo(coolZonesLayer);
             }
 
-            const marker = L.marker([tree.latitude, tree.longitude], { icon: treeIcon });
+            const marker = L.marker([tree.latitude, tree.longitude], {
+                icon: createTreeIcon(tree.status.code)
+            });
 
             const env = tree.environmental;
+
+            let carouselHTML = '';
+            if (tree.photos && tree.photos.length > 0) {
+                carouselHTML = `
+                    <div class="popup-carousel">
+                        <div class="popup-carousel-images" id="carousel-${tree.id}">
+                            ${tree.photos.map((photo, index) => `
+                                <img src="${photo.webPath}"
+                                     alt="${photo.originalName}"
+                                     class="popup-carousel-image ${index === 0 ? 'active' : ''}"
+                                     data-index="${index}">
+                            `).join('')}
+                        </div>
+                        ${tree.photos.length > 1 ? `
+                            <div class="popup-carousel-controls">
+                                <button class="popup-carousel-btn" onclick="changePhoto(${tree.id}, -1)">◀</button>
+                                <button class="popup-carousel-btn" onclick="changePhoto(${tree.id}, 1)">▶</button>
+                            </div>
+                            <div class="popup-carousel-indicators">
+                                ${tree.photos.map((_, index) => `
+                                    <span class="popup-carousel-dot ${index === 0 ? 'active' : ''}"
+                                          onclick="goToPhoto(${tree.id}, ${index})"
+                                          data-tree="${tree.id}"
+                                          data-index="${index}"></span>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
             const popupContent = `
+                ${carouselHTML}
                 <div class="popup-header">${tree.treeType.commonName}</div>
                 <div class="popup-detail"><em>${tree.treeType.scientificName}</em></div>
                 ${tree.age ? `<div class="popup-detail"><strong>Âge :</strong> ${tree.age} ans${env.isMature ? ' ✓ (mature)' : ''}</div>` : ''}
@@ -163,12 +225,54 @@
                 </div>
 
                 ${tree.contributor ? `<div class="popup-detail" style="margin-top: 0.5rem;">Recensé par : ${tree.contributor.name}</div>` : '<div class="popup-detail" style="margin-top: 0.5rem;">Recensé par : Municipalité</div>'}
-                <span class="popup-badge badge-validated">${tree.status.label}</span>
+                <span class="popup-badge badge-${tree.status.code}">${tree.status.label}</span>
             `;
 
-            marker.bindPopup(popupContent);
+            marker.bindPopup(popupContent, {
+                maxWidth: 300,
+                minWidth: 250
+            });
             marker.addTo(treesLayer);
         });
+
+        window.changePhoto = function(treeId, direction) {
+            const carousel = document.getElementById('carousel-' + treeId);
+            if (!carousel) return;
+
+            const images = carousel.querySelectorAll('.popup-carousel-image');
+            const dots = document.querySelectorAll(`.popup-carousel-dot[data-tree="${treeId}"]`);
+
+            let currentIndex = 0;
+            images.forEach((img, index) => {
+                if (img.classList.contains('active')) {
+                    currentIndex = index;
+                }
+            });
+
+            let newIndex = currentIndex + direction;
+            if (newIndex < 0) newIndex = images.length - 1;
+            if (newIndex >= images.length) newIndex = 0;
+
+            images.forEach(img => img.classList.remove('active'));
+            images[newIndex].classList.add('active');
+
+            dots.forEach(dot => dot.classList.remove('active'));
+            if (dots[newIndex]) dots[newIndex].classList.add('active');
+        };
+
+        window.goToPhoto = function(treeId, index) {
+            const carousel = document.getElementById('carousel-' + treeId);
+            if (!carousel) return;
+
+            const images = carousel.querySelectorAll('.popup-carousel-image');
+            const dots = document.querySelectorAll(`.popup-carousel-dot[data-tree="${treeId}"]`);
+
+            images.forEach(img => img.classList.remove('active'));
+            if (images[index]) images[index].classList.add('active');
+
+            dots.forEach(dot => dot.classList.remove('active'));
+            if (dots[index]) dots[index].classList.add('active');
+        };
 
         requestsData.forEach(request => {
             const marker = L.marker([request.latitude, request.longitude], { icon: requestIcon });

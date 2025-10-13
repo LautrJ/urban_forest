@@ -46,6 +46,15 @@ class MapController extends AbstractController
 
         $treesData = [];
         foreach ($trees as $tree) {
+            $photosData = [];
+            foreach ($tree->getPhotos() as $photo) {
+                $photosData[] = [
+                    'webPath' => $photo->getWebPath(),
+                    'originalName' => $photo->getOriginalName(),
+                    'isPrimary' => $photo->isPrimary(),
+                ];
+            }
+
             $treesData[] = [
                 'id' => $tree->getId(),
                 'latitude' => $tree->getLatitude(),
@@ -69,7 +78,8 @@ class MapController extends AbstractController
                     'maturityPercentage' => $tree->getMaturityPercentage(),
                     'allergyPotential' => $tree->getTreeType()->getAllergyPotential(),
                     'resilience' => $tree->getTreeType()->getResilience(),
-                ]
+                ],
+                'photos' => $photosData,
             ];
         }
 
